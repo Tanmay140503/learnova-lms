@@ -1,0 +1,136 @@
+﻿@model List<Learnova.Models.Entities.Lesson>
+
+@if (Model == null || !Model.Any())
+{
+    <div class="alert alert-info mb-0">
+        <div class="d-flex align-items-center">
+            <i class="fas fa-info-circle fa-2x me-3"></i>
+            <div>
+                <strong>No lessons added yet</strong>
+                <p class="mb-0">Click "Add Lesson" to create your first lesson</p>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 50px;">#</th>
+                    <th>Lesson Title</th>
+                    <th class="text-center" style="width: 120px;">Type</th>
+                    <th class="text-center" style="width: 100px;">Duration</th>
+                    <th class="text-center" style="width: 100px;">Download</th>
+                    <th class="text-center" style="width: 120px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="lessonsSortable">
+                @foreach (var lesson in Model.OrderBy(l => l.OrderIndex))
+                {
+                    <tr data-lesson-id="@lesson.Id">
+                        <td>
+                            <span class="badge bg-secondary">@lesson.OrderIndex</span>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="lesson-type-icon me-3">
+                                    @switch (lesson.LessonType)
+                                    {
+                                        case "Video":
+                                            <i class="fas fa-video text-danger fa-lg"></i>
+                                            break;
+                                        case "Document":
+                                            <i class="fas fa-file-alt text-primary fa-lg"></i>
+                                            break;
+                                        case "Image":
+                                            <i class="fas fa-image text-success fa-lg"></i>
+                                            break;
+                                        default:
+                                            <i class="fas fa-file text-secondary fa-lg"></i>
+                                            break;
+                                    }
+                                </div>
+                                <div>
+                                    <strong>@lesson.Title</strong>
+                                    @if (!string.IsNullOrEmpty(lesson.Description))
+                                    {
+                                        <br />
+                            
+                                        <small class="text-muted">
+                                            @(lesson.Description.Length > 60
+                                                                            ? lesson.Description.Substring(0, 60) + "..."
+                                                                            : lesson.Description)
+                                        </small>
+                                    }
+                            </div>
+                        </div>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge
+                                    @(lesson.LessonType == "Video" ? "bg-danger" :
+                                                                lesson.LessonType == "Document" ? "bg-primary" :
+                                                                lesson.LessonType == "Image" ? "bg-success" : "bg-secondary")">
+                                @lesson.LessonType
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            @if (lesson.DurationMinutes.HasValue && lesson.DurationMinutes > 0)
+                            {
+                                <span class="text-muted">
+                                    <i class="fas fa-clock me-1"></i>@lesson.DurationMinutes min
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">-</span>
+                            }
+                        </td>
+                        <td class="text-center">
+                            @if (lesson.AllowDownload)
+                            {
+                                <span class="badge bg-success">
+                                    <i class="fas fa-check"></i> Yes
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">
+                                    <i class="fas fa-times"></i> No
+                                </span>
+                            }
+                        </td>
+                        <td class="text-center">
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary"
+                                        onclick="openLessonModal(@lesson.Id, @lesson.CourseId)"
+                                        title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                @if (lesson.LessonType == "Video" && !string.IsNullOrEmpty(lesson.VideoUrl))
+                                {
+                                    <a href="@lesson.VideoUrl" target="_blank"
+                                       class="btn btn-outline-info" title="Preview">
+                                        <i class="fas fa-external-link-alt"></i>
+                                    </a>
+                                }
+                                <button class="btn btn-outline-danger"
+                                        onclick="deleteLesson(@lesson.Id)"
+                                        title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card-footer bg-light text-muted small">
+        <i class="fas fa-info-circle me-1"></i>
+        Total: @Model.Count lessons |
+        Duration: @Model.Sum(l => l.DurationMinutes ?? 0) minutes
+    </div>
+}

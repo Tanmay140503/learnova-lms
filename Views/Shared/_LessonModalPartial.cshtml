@@ -1,0 +1,227 @@
+﻿@model Learnova.Models.ViewModels.LessonViewModel
+
+<div class="modal fade" id="lessonModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-@(Model.Id > 0 ? "edit" : "plus-circle") me-2"></i>
+                    @(Model.Id > 0 ? "Edit Lesson" : "Add New Lesson")
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="lessonForm" enctype="multipart/form-data">
+                    <input type="hidden" name="Id" value="@Model.Id" />
+                    <input type="hidden" name="CourseId" value="@Model.CourseId" />
+
+                    <!-- Tabs -->
+                    <ul class="nav nav-tabs mb-3" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#contentTab" type="button">
+                                <i class="fas fa-file me-1"></i> Content
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#descriptionTab" type="button">
+                                <i class="fas fa-align-left me-1"></i> Description
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#attachmentsTab" type="button">
+                                <i class="fas fa-paperclip me-1"></i> Attachments
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content">
+                        <!-- Content Tab -->
+                        <div class="tab-pane fade show active" id="contentTab">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">
+                                            Lesson Title <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" name="Title" class="form-control" 
+                                               value="@Model.Title" required placeholder="Enter lesson title" />
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">
+                                            Lesson Type <span class="text-danger">*</span>
+                                        </label>
+                                        <select asp-for="LessonType" id="lessonTypeSelect" class="form-select"
+                                                onchange="toggleLessonFields(this.value)">
+                                            <option value="Video">📹 Video</option>
+                                            <option value="Document">📄 Document</option>
+                                            <option value="Image">🖼️ Image</option>
+                                        </select>
+
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Video Fields -->
+                            <div id="videoFields" style="display: @(Model.LessonType == "Video" || Model.Id == 0 ? "block" : "none")">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Video URL</label>
+                                            <input type="url" name="VideoUrl" class="form-control" 
+                                                   value="@Model.VideoUrl" 
+                                                   placeholder="https://youtube.com/watch?v=... or https://drive.google.com/..." />
+                                            <div class="form-text">
+                                                <i class="fab fa-youtube text-danger me-1"></i> YouTube
+                                                <i class="fab fa-google-drive text-warning ms-2 me-1"></i> Google Drive
+                                                <i class="fas fa-video text-info ms-2 me-1"></i> Vimeo supported
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Duration (minutes)</label>
+                                            <input type="number" name="DurationMinutes" class="form-control" 
+                                                   value="@Model.DurationMinutes" min="0" placeholder="e.g., 15" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Document Fields -->
+                            <div id="documentFields" style="display: @(Model.LessonType == "Document" ? "block" : "none")">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Upload Document</label>
+                                    <input type="file" name="DocumentFile" class="form-control" 
+                                           accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx" />
+                                    <div class="form-text">
+                                        Supported: PDF, Word, PowerPoint, Excel (Max 50MB)
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(Model.DocumentUrl))
+                                    {
+                                        <div class="mt-2 p-2 bg-light rounded">
+                                            <i class="fas fa-file-alt text-primary me-2"></i>
+                                            <a href="@Model.DocumentUrl" target="_blank">Current Document</a>
+                                        </div>
+                                    }
+                                </div>
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" name="AllowDownload" value="true" 
+                                           class="form-check-input" id="docAllowDownload"
+                                           @(Model.AllowDownload ? "checked" : "") />
+                                    <label class="form-check-label" for="docAllowDownload">
+                                        Allow learners to download this document
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Image Fields -->
+                            <div id="imageFields" style="display: @(Model.LessonType == "Image" ? "block" : "none")">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Upload Image</label>
+                                    <input type="file" name="ImageFile" class="form-control" 
+                                           accept="image/*" onchange="previewLessonImage(this)" />
+                                    <div class="form-text">
+                                        Supported: JPG, PNG, GIF, WebP (Max 10MB)
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(Model.ImageUrl))
+                                    {
+                                        <div class="mt-2">
+                                            <img src="@Model.ImageUrl" class="img-thumbnail" 
+                                                 style="max-height: 150px;" id="lessonImagePreview" />
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <img src="" class="img-thumbnail mt-2 d-none" 
+                                             style="max-height: 150px;" id="lessonImagePreview" />
+                                    }
+                                </div>
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" name="AllowDownload" value="true" 
+                                           class="form-check-input" id="imgAllowDownload"
+                                           @(Model.AllowDownload ? "checked" : "") />
+                                    <label class="form-check-label" for="imgAllowDownload">
+                                        Allow learners to download this image
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Responsible User -->
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Responsible Instructor</label>
+                                <select name="ResponsibleUserId" class="form-select">
+                                    <option value="">-- None --</option>
+                                    @if (ViewBag.Instructors != null)
+                                    {
+                                        @foreach (var instructor in ViewBag.Instructors as IEnumerable<Learnova.Models.Entities.ApplicationUser>)
+                                        {
+                                            bool isSelected = Model.ResponsibleUserId == instructor.Id;
+
+                                            <option value="@instructor.Id" selected="@isSelected">
+                                                @instructor.FirstName @instructor.LastName
+                                            </option>
+                                        }
+
+                                    }
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Description Tab -->
+                        <div class="tab-pane fade" id="descriptionTab">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Lesson Description</label>
+                                <textarea name="Description" class="form-control" rows="8" 
+                                          placeholder="Enter a description for this lesson. This will be shown to learners.">@Model.Description</textarea>
+                            </div>
+                        </div>
+
+                        <!-- Attachments Tab -->
+                        <div class="tab-pane fade" id="attachmentsTab">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Additional resources will be shown below the lesson content. 
+                                You can add files or links.
+                            </div>
+                            
+                            <div class="text-center py-4 text-muted">
+                                <i class="fas fa-paperclip fa-3x mb-3 opacity-50"></i>
+                                <p>Attachment management will be available after saving the lesson.</p>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-primary" onclick="saveLesson()">
+                    <i class="fas fa-save me-1"></i> Save Lesson
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleLessonFields(type) {
+        document.getElementById('videoFields').style.display = type === 'Video' ? 'block' : 'none';
+        document.getElementById('documentFields').style.display = type === 'Document' ? 'block' : 'none';
+        document.getElementById('imageFields').style.display = type === 'Image' ? 'block' : 'none';
+    }
+
+    function previewLessonImage(input) {
+        var preview = document.getElementById('lessonImagePreview');
+        if (input.files && input.files[0]) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                preview.classList.remove('d-none');
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+</script>
