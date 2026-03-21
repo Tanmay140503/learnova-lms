@@ -1,0 +1,166 @@
+@{
+    ViewData["Title"] = "Add Attendees";
+    var courseId = ViewBag.CourseId;
+    var courseTitle = ViewBag.CourseTitle;
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Header -->
+            <div class="d-flex align-items-center mb-4">
+                <a asp-action="EditCourse" asp-route-id="@courseId" class="btn btn-outline-secondary me-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div>
+                    <h2 class="mb-0">Add Attendees</h2>
+                    <p class="text-muted mb-0">Course: @courseTitle</p>
+                </div>
+            </div>
+
+            <!-- Main Card -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-plus me-2"></i> Invite Learners
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Note:</strong> Only registered users can be added to the course. 
+                        Unregistered emails will be skipped.
+                    </div>
+
+                    <form id="addAttendeesForm">
+                        <input type="hidden" id="courseId" value="@courseId" />
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-envelope me-1"></i> Email Addresses
+                            </label>
+                            <textarea id="emailsList" class="form-control" rows="8" 
+                                      placeholder="Enter email addresses (one per line or comma separated)&#10;&#10;Example:&#10;student1@example.com&#10;student2@example.com&#10;student3@example.com"></textarea>
+                            <div class="form-text">
+                                Enter one email per line, or separate multiple emails with commas
+                            </div>
+                        </div>
+
+                        <div class="mb-4 form-check">
+                            <input type="checkbox" class="form-check-input" id="sendNotification" checked>
+                            <label class="form-check-label" for="sendNotification">
+                                <i class="fas fa-bell me-1"></i> Send email notification to learners
+                            </label>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a asp-action="EditCourse" asp-route-id="@courseId" class="btn btn-secondary">
+                                <i class="fas fa-times me-1"></i> Cancel
+                            </a>
+                            <button type="button" class="btn btn-success btn-lg" onclick="inviteUsers()">
+                                <i class="fas fa-paper-plane me-2"></i> Send Invitations
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Results Section -->
+                    <div id="invitationResults" class="mt-4" style="display: none;"></div>
+                </div>
+            </div>
+
+            <!-- Tips Card -->
+            <div class="card mt-4 border-0 bg-light">
+                <div class="card-body">
+                    <h6 class="fw-bold"><i class="fas fa-lightbulb text-warning me-2"></i> Tips</h6>
+                    <ul class="mb-0 small text-muted">
+                        <li>Users must have registered accounts to be enrolled</li>
+                        <li>Enrolled users will see the course in their "My Courses" dashboard</li>
+                        <li>You can track their progress in the Reporting section</li>
+                        <li>For invitation-only courses, users need to be added here to access content</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function inviteUsers() {
+            var courseId = parseInt($('#courseId').val());
+            var emailsText = $('#emailsList').val().trim();
+            
+            if (!emailsText) {
+                alert('Please enter at least one email address');
+                $('#emailsList').focus();
+                return;
+            }
+
+            // Parse emails (split by newline, comma, or semicolon)
+            var emails = emailsText.split(/[\n,;]+/)
+                .map(function(e) { return e.trim().toLowerCase(); })
+                .filter(function(e) { return e.length > 0; });
+
+            // Remove duplicates
+            emails = [...new Set(emails)];
+
+            // Basic email validation
+            var emailRegex = /^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/;
+            var invalidEmails = emails.filter(function(e) { return !emailRegex.test(e); });
+            
+            if (invalidEmails.length > 0) {
+                alert('Invalid email addresses found:\n' + invalidEmails.join('\n'));
+                return;
+            }
+
+            // Show loading
+            var btn = event.target;
+            var originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Sending...';
+            btn.disabled = true;
+
+            $.ajax({
+                url: '@Url.Action("InviteUsers", "Instructor")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    courseId: courseId,
+                    userEmails: emails
+                }),
+                success: function(response) {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    
+                    if (response.success) {
+                        showResults(response.message, emails.length);
+                        $('#emailsList').val('');
+                    } else {
+                        alert(response.message || 'Failed to send invitations');
+                    }
+                },
+                error: function() {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    alert('An error occurred. Please try again.');
+                }
+            });
+        }
+
+        function showResults(message, count) {
+            var resultsDiv = $('#invitationResults');
+            var html = `
+                <div class="alert alert-success">
+                    <h6><i class="fas fa-check-circle me-2"></i> Invitations Processed</h6>
+                    <p class="mb-0">${message}</p>
+                </div>
+            `;
+            
+            resultsDiv.html(html).slideDown();
+
+            // Auto-hide after 10 seconds
+            setTimeout(function() {
+                resultsDiv.slideUp();
+            }, 10000);
+        }
+    </script>
+}
