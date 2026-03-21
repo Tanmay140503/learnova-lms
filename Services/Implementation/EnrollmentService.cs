@@ -1,4 +1,4 @@
-﻿using Learnova.Data;
+using Learnova.Data;
 using Learnova.Models.Entities;
 using Learnova.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -125,6 +125,17 @@ namespace Learnova.Services.Implementation
                 if (enrollment.CompletedDate == null)
                     enrollment.CompletedDate = DateTime.UtcNow;
             }
+
+            await _context.SaveChangesAsync();
+        }
+        public async Task MarkCourseCompletedAsync(string userId, int courseId)
+        {
+            var enrollment = await GetEnrollmentAsync(userId, courseId);
+            if (enrollment == null) return;
+
+            enrollment.Status = "Completed";
+            enrollment.CompletionPercentage = 100;
+            enrollment.CompletedDate = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
         }
