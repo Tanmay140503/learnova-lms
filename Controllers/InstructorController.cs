@@ -1,4 +1,4 @@
-﻿using Learnova.Data;
+using Learnova.Data;
 using Learnova.Models.Entities;
 using Learnova.Models.ViewModels;
 using Learnova.Services.Interfaces;
@@ -187,7 +187,7 @@ namespace Learnova.Controllers
         public async Task<IActionResult> TogglePublish(int id)
         {
             var result = await _courseService.TogglePublishAsync(id);
-            return Json(new { success = result });
+            return Redirect(Request.Headers["Referer"].ToString());
         }
 
         // ============ LESSONS ============
