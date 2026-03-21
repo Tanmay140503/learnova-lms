@@ -1,0 +1,475 @@
+@model Learnova.Models.Entities.Course
+@{
+    ViewData["Title"] = Model.Title;
+    var enrollment = ViewBag.Enrollment as Learnova.Models.Entities.CourseEnrollment;
+    var progresses = ViewBag.Progresses as List<Learnova.Models.Entities.LessonProgress>;
+    var userId = ViewBag.UserId as string;
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-md-8">
+            <!-- Course Header -->
+            <div class="mb-4">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a asp-action="Courses">Courses</a></li>
+                        <li class="breadcrumb-item active">@Model.Title</li>
+                    </ol>
+                </nav>
+                <h1 class="display-5">@Model.Title</h1>
+                <p class="lead text-muted">@Model.ShortDescription</p>
+                
+                @if (!string.IsNullOrEmpty(Model.Tags))
+                {
+                    <div class="mb-3">
+                        @foreach (var tag in Model.Tags.Split(','))
+                        {
+                            <span class="badge bg-primary me-1">@tag.Trim()</span>
+                        }
+                    </div>
+                }
+            </div>
+
+            <!-- Progress (if enrolled) -->
+            @if (enrollment != null)
+            {
+                <div class="card mb-4 border-primary">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="mb-0"><i class="fas fa-chart-line"></i> Your Progress</h5>
+                            <span class="badge 
+                                @(enrollment.Status == "Completed" ? "bg-success" : 
+                                  enrollment.Status == "In Progress" ? "bg-warning" : "bg-secondary") fs-6">
+                                @enrollment.Status
+                            </span>
+                        </div>
+                        <div class="progress mb-2" style="height: 25px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" 
+                                 role="progressbar" 
+                                 style="width: @enrollment.CompletionPercentage%"
+                                 aria-valuenow="@enrollment.CompletionPercentage" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100">
+                                @enrollment.CompletionPercentage.ToString("F0")%
+                            </div>
+                        </div>
+                        <div class="row text-center small text-muted">
+                            <div class="col">
+                                <strong>@Model.Lessons.Count</strong><br/>Total Lessons
+                            </div>
+                            <div class="col">
+                                <strong>@(progresses?.Count(p => p.IsCompleted) ?? 0)</strong><br/>Completed
+                            </div>
+                            <div class="col">
+                                <strong>@(Model.Lessons.Count - (progresses?.Count(p => p.IsCompleted) ?? 0))</strong><br/>Remaining
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Tabs -->
+            <ul class="nav nav-tabs" id="courseDetailTabs" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#overview">
+                        <i class="fas fa-info-circle"></i> Overview
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#lessons">
+                        <i class="fas fa-list"></i> Lessons (@Model.Lessons.Count)
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#reviews">
+                        <i class="fas fa-star"></i> Reviews
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content mt-3">
+                <!-- Overview Tab -->
+                <div class="tab-pane fade show active" id="overview">
+                    <div class="card">
+                        <div class="card-body">
+                            <h4>About this course</h4>
+                            <div class="course-description">
+                                @if (!string.IsNullOrEmpty(Model.Description))
+                                {
+                                    @Html.Raw(Model.Description)
+                                }
+                                else
+                                {
+                                    <p class="text-muted">No description available.</p>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lessons Tab -->
+                <div class="tab-pane fade" id="lessons">
+                    @if (!Model.Lessons.Any())
+                    {
+                        <div class="alert alert-info">
+                            No lessons have been added to this course yet.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="mb-3">
+                            <input type="text" id="lessonSearch" class="form-control" placeholder="Search lessons...">
+                        </div>
+                        
+                        <div class="list-group" id="lessonsList">
+                            @foreach (var lesson in Model.Lessons.OrderBy(l => l.OrderIndex))
+                            {
+                                var isCompleted = progresses?.Any(p => p.LessonId == lesson.Id && p.IsCompleted) ?? false;
+                                
+                                <div class="list-group-item lesson-item" data-lesson-title="@lesson.Title.ToLower()">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center mb-1">
+                                                @if (isCompleted)
+                                                {
+                                                    <div class="lesson-status-icon bg-success text-white me-2">
+                                                        <i class="fas fa-check"></i>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <div class="lesson-status-icon bg-secondary text-white me-2">
+                                                        <i class="fas fa-play"></i>
+                                                    </div>
+                                                }
+                                                <span class="badge bg-light text-dark border me-2">@lesson.LessonType</span>
+                                                <h6 class="mb-0">@lesson.Title</h6>
+                                            </div>
+                                            @if (!string.IsNullOrEmpty(lesson.Description))
+                                            {
+                                                <p class="text-muted small mb-1">@lesson.Description</p>
+                                            }
+                                            @if (lesson.DurationMinutes.HasValue)
+                                            {
+                                                <small class="text-muted">
+                                                    <i class="fas fa-clock"></i> @lesson.DurationMinutes minutes
+                                                </small>
+                                            }
+                                        </div>
+                                        @if (enrollment != null)
+                                        {
+                                            <a asp-action="Player" asp-route-lessonId="@lesson.Id" 
+                                               class="btn btn-sm @(isCompleted ? "btn-outline-success" : "btn-primary")">
+                                                <i class="fas @(isCompleted ? "fa-eye" : "fa-play")"></i> 
+                                                @(isCompleted ? "Review" : "Start")
+                                            </a>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <!-- Reviews Tab -->
+                <div class="tab-pane fade" id="reviews">
+                    <div id="reviewsContainer">
+                        <div class="text-center p-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    @if (userId != null && enrollment != null)
+                    {
+                        <div class="card mt-3">
+                            <div class="card-body">
+                                <h5>Add Your Review</h5>
+                                <form id="reviewForm">
+                                    <div class="mb-3">
+                                        <label class="form-label">Rating</label>
+                                        <div class="rating-stars" id="ratingStars">
+                                            @for (int i = 1; i <= 5; i++)
+                                            {
+                                                <i class="far fa-star star" data-rating="@i"></i>
+                                            }
+                                        </div>
+                                        <input type="hidden" id="ratingValue" value="0">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Review</label>
+                                        <textarea id="reviewText" class="form-control" rows="3" placeholder="Share your experience..."></textarea>
+                                    </div>
+                                    <button type="button" class="btn btn-primary" onclick="submitReview()">
+                                        <i class="fas fa-paper-plane"></i> Submit Review
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-md-4">
+            <div class="card shadow sticky-top" style="top: 20px;">
+                @if (!string.IsNullOrEmpty(Model.CourseImageUrl))
+                {
+                    <img src="@Model.CourseImageUrl" class="card-img-top" alt="@Model.Title" />
+                }
+                else
+                {
+                    <div class="bg-gradient-primary d-flex align-items-center justify-content-center" 
+                         style="height: 200px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <i class="fas fa-book fa-5x text-white opacity-75"></i>
+                    </div>
+                }
+                
+                <div class="card-body">
+                    @if (Model.AccessRule == "OnPayment" && Model.Price.HasValue)
+                    {
+                        <div class="text-center mb-3">
+                            <h2 class="text-primary mb-0">${Model.Price.Value}</h2>
+                            <small class="text-muted">One-time payment</small>
+                        </div>
+                    }
+
+                    @if (enrollment == null)
+                    {
+                        @if (User.Identity.IsAuthenticated)
+                        {
+                            @if (Model.AccessRule == "OnPayment" && Model.Price.HasValue)
+                            {
+                                <button class="btn btn-success btn-lg w-100 mb-2" onclick="joinCourse(@Model.Id)">
+                                    <i class="fas fa-shopping-cart"></i> Buy Now
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-primary btn-lg w-100 mb-2" onclick="joinCourse(@Model.Id)">
+                                    <i class="fas fa-sign-in-alt"></i> Enroll Now
+                                </button>
+                            }
+                        }
+                        else
+                        {
+                            <a asp-action="Login" asp-controller="Account" asp-route-returnUrl="@Context.Request.Path" 
+                               class="btn btn-primary btn-lg w-100 mb-2">
+                                <i class="fas fa-sign-in-alt"></i> Login to Enroll
+                            </a>
+                        }
+                    }
+                    else if (enrollment.Status == "Yet to Start")
+                    {
+                        // No @{ here
+                        var firstLesson = Model.Lessons.OrderBy(l => l.OrderIndex).FirstOrDefault();
+
+                        if (firstLesson != null)
+                        {
+                            <a asp-action="Player" asp-route-lessonId="@firstLesson.Id"
+                               class="btn btn-success btn-lg w-100 mb-2">
+                                <i class="fas fa-play"></i> Start Course
+                            </a>
+                        }
+                    }
+                    else if (enrollment.Status == "In Progress")
+                    {
+                        // No @{ here
+                        var nextLesson = Model.Lessons
+                        .OrderBy(l => l.OrderIndex)
+                        .FirstOrDefault(l => !(progresses?.Any(p => p.LessonId == l.Id && p.IsCompleted) ?? false));
+
+                        if (nextLesson != null)
+                        {
+                            <a asp-action="Player" asp-route-lessonId="@nextLesson.Id"
+                               class="btn btn-warning btn-lg w-100 mb-2">
+                                <i class="fas fa-play"></i> Continue Learning
+                            </a>
+                        }
+                    }
+                    else if (enrollment.Status == "Completed")
+                    {
+                        <button class="btn btn-success btn-lg w-100 mb-2" disabled>
+                            <i class="fas fa-check-circle"></i> Course Completed
+                        </button>
+                    }
+
+                    <hr />
+
+                    <h6 class="text-muted mb-3">Course Details</h6>
+                    <div class="course-stats">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span><i class="fas fa-book-open text-primary"></i> Lessons</span>
+                            <strong>@Model.TotalLessons</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span><i class="fas fa-clock text-primary"></i> Duration</span>
+                            <strong>@Model.TotalDurationMinutes mins</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span><i class="fas fa-eye text-primary"></i> Views</span>
+                            <strong>@Model.ViewsCount</strong>
+                        </div>
+                        @if (Model.ResponsibleUser != null)
+                        {
+                            <div class="d-flex justify-content-between mb-2">
+                                <span><i class="fas fa-chalkboard-teacher text-primary"></i> Instructor</span>
+                                <strong>@Model.ResponsibleUser.FirstName @Model.ResponsibleUser.LastName</strong>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            loadReviews();
+            
+            // Lesson search
+            $('#lessonSearch').on('keyup', function() {
+                var search = $(this).val().toLowerCase();
+                $('.lesson-item').each(function() {
+                    var title = $(this).data('lesson-title');
+                    $(this).toggle(title.indexOf(search) > -1);
+                });
+            });
+
+            // Rating stars
+            $('.star').on('click', function() {
+                var rating = $(this).data('rating');
+                $('#ratingValue').val(rating);
+                updateStars(rating);
+            });
+
+            $('.star').on('mouseenter', function() {
+                var rating = $(this).data('rating');
+                updateStars(rating);
+            });
+
+            $('#ratingStars').on('mouseleave', function() {
+                var rating = $('#ratingValue').val();
+                updateStars(rating);
+            });
+        });
+
+        function updateStars(rating) {
+            $('.star').each(function(index) {
+                if (index < rating) {
+                    $(this).removeClass('far').addClass('fas').css('color', '#ffc107');
+                } else {
+                    $(this).removeClass('fas').addClass('far').css('color', '#dee2e6');
+                }
+            });
+        }
+
+        function joinCourse(courseId) {
+            $.post('@Url.Action("JoinCourse", "Learner")', { courseId: courseId }, function(response) {
+                if (response.success) {
+                    if (response.requiresPayment) {
+                        alert('This course costs $' + response.price + '. Payment integration would go here.');
+                        // In production, redirect to payment gateway
+                    }
+                    location.reload();
+                } else {
+                    alert(response.message);
+                }
+            });
+        }
+
+        function loadReviews() {
+            $.get('@Url.Action("GetReviews", "Learner")', { courseId: @Model.Id }, function(data) {
+                var html = '';
+                
+                if (data.reviews.length === 0) {
+                    html = '<div class="text-center text-muted p-4">No reviews yet. Be the first to review!</div>';
+                } else {
+                    html += '<div class="mb-3 text-center">';
+                    html += '<h4>' + data.averageRating.toFixed(1) + ' <i class="fas fa-star text-warning"></i></h4>';
+                    html += '<small class="text-muted">' + data.reviews.length + ' reviews</small>';
+                    html += '</div><hr/>';
+                    
+                    data.reviews.forEach(function(review) {
+                        html += '<div class="mb-3">';
+                        html += '<div class="d-flex align-items-center mb-2">';
+                        html += '<i class="fas fa-user-circle fa-2x text-muted me-2"></i>';
+                        html += '<div>';
+                        html += '<strong>' + review.user.firstName + ' ' + review.user.lastName + '</strong>';
+                        html += '<div class="small text-muted">';
+                        for(var i = 0; i < 5; i++) {
+                            if(i < review.rating) {
+                                html += '<i class="fas fa-star text-warning"></i>';
+                            } else {
+                                html += '<i class="far fa-star text-warning"></i>';
+                            }
+                        }
+                        html += '</div></div></div>';
+                        if(review.reviewText) {
+                            html += '<p class="mb-0">' + review.reviewText + '</p>';
+                        }
+                        html += '</div><hr/>';
+                    });
+                }
+                
+                $('#reviewsContainer').html(html);
+            });
+        }
+
+        function submitReview() {
+            var rating = $('#ratingValue').val();
+            var reviewText = $('#reviewText').val();
+            
+            if (rating == 0) {
+                alert('Please select a rating');
+                return;
+            }
+            
+            $.post('@Url.Action("AddReview", "Learner")', {
+                courseId: @Model.Id,
+                rating: rating,
+                reviewText: reviewText
+            }, function(response) {
+                if (response.success) {
+                    alert(response.message);
+                    $('#reviewForm')[0].reset();
+                    $('#ratingValue').val(0);
+                    updateStars(0);
+                    loadReviews();
+                } else {
+                    alert(response.message);
+                }
+            });
+        }
+    </script>
+
+    <style>
+        .lesson-status-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .star {
+            font-size: 24px;
+            cursor: pointer;
+            color: #dee2e6;
+            margin-right: 5px;
+        }
+
+        .sticky-top {
+            position: sticky;
+            z-index: 1020;
+        }
+    </style>
+}
