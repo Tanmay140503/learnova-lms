@@ -1,0 +1,205 @@
+@model Learnova.Models.ViewModels.RegisterViewModel
+@{
+    ViewData["Title"] = "Register";
+    Layout = "_Layout";
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-lg border-0 rounded-lg">
+                <div class="card-header bg-success text-white text-center py-4">
+                    <h3 class="mb-0">
+                        <i class="fas fa-user-plus me-2"></i> Create Account
+                    </h3>
+                    <p class="mb-0 mt-2 opacity-75">Join Learnova and start learning today</p>
+                </div>
+                <div class="card-body p-4">
+                    <form asp-action="Register" method="post">
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="FirstName" class="form-label">
+                                    <i class="fas fa-user me-1"></i> First Name
+                                </label>
+                                <input asp-for="FirstName" class="form-control form-control-lg"
+                                       placeholder="Enter first name" />
+                                <span asp-validation-for="FirstName" class="text-danger small"></span>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="LastName" class="form-label">
+                                    <i class="fas fa-user me-1"></i> Last Name
+                                </label>
+                                <input asp-for="LastName" class="form-control form-control-lg"
+                                       placeholder="Enter last name" />
+                                <span asp-validation-for="LastName" class="text-danger small"></span>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Email" class="form-label">
+                                <i class="fas fa-envelope me-1"></i> Email Address
+                            </label>
+                            <input asp-for="Email" class="form-control form-control-lg"
+                                   placeholder="Enter your email" autocomplete="email" />
+                            <span asp-validation-for="Email" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Password" class="form-label">
+                                <i class="fas fa-lock me-1"></i> Password
+                            </label>
+                            <div class="input-group">
+                                <input asp-for="Password" class="form-control form-control-lg"
+                                       placeholder="Create a password" id="passwordInput" />
+                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('passwordInput', 'toggleIcon1')">
+                                    <i class="fas fa-eye" id="toggleIcon1"></i>
+                                </button>
+                            </div>
+                            <span asp-validation-for="Password" class="text-danger small"></span>
+                            <div class="password-strength mt-2" id="passwordStrength"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="ConfirmPassword" class="form-label">
+                                <i class="fas fa-lock me-1"></i> Confirm Password
+                            </label>
+                            <div class="input-group">
+                                <input asp-for="ConfirmPassword" class="form-control form-control-lg"
+                                       placeholder="Confirm your password" id="confirmPasswordInput" />
+                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('confirmPasswordInput', 'toggleIcon2')">
+                                    <i class="fas fa-eye" id="toggleIcon2"></i>
+                                </button>
+                            </div>
+                            <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="agreeTerms" required />
+                            <label class="form-check-label" for="agreeTerms">
+                                I agree to the <a href="#" class="text-primary">Terms of Service</a> and
+                                <a asp-controller="Home" asp-action="Privacy" class="text-primary">Privacy Policy</a>
+                            </label>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-user-plus me-2"></i> Create Account
+                            </button>
+                        </div>
+                    </form>
+
+                    <hr class="my-4">
+
+                    <div class="text-center">
+                        <p class="mb-3 text-muted">Or sign up with</p>
+                        <div class="d-flex justify-content-center gap-2">
+                            <button class="btn btn-outline-danger" disabled>
+                                <i class="fab fa-google"></i> Google
+                            </button>
+                            <button class="btn btn-outline-primary" disabled>
+                                <i class="fab fa-facebook"></i> Facebook
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-light text-center py-3">
+                    <p class="mb-0">
+                        Already have an account?
+                        <a asp-action="Login" class="text-success fw-bold text-decoration-none">
+                            Sign in here
+                        </a>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Benefits -->
+            <div class="card mt-4 border-0 bg-light">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3">
+                        <i class="fas fa-check-circle text-success me-2"></i> Why Join Learnova?
+                    </h6>
+                    <div class="row">
+                        <div class="col-6 mb-2">
+                            <small><i class="fas fa-check text-success me-1"></i> Access to 500+ courses</small>
+                        </div>
+                        <div class="col-6 mb-2">
+                            <small><i class="fas fa-check text-success me-1"></i> Learn at your own pace</small>
+                        </div>
+                        <div class="col-6 mb-2">
+                            <small><i class="fas fa-check text-success me-1"></i> Earn badges & certificates</small>
+                        </div>
+                        <div class="col-6 mb-2">
+                            <small><i class="fas fa-check text-success me-1"></i> Track your progress</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        function togglePassword(inputId, iconId) {
+            const passwordInput = document.getElementById(inputId);
+            const toggleIcon = document.getElementById(iconId);
+
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.classList.remove('fa-eye');
+                toggleIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.classList.remove('fa-eye-slash');
+                toggleIcon.classList.add('fa-eye');
+            }
+        }
+
+        // Password strength indicator
+        document.getElementById('passwordInput').addEventListener('input', function() {
+            const password = this.value;
+            const strengthDiv = document.getElementById('passwordStrength');
+            let strength = 0;
+            let text = '';
+            let color = '';
+
+            if (password.length >= 6) strength++;
+            if (password.length >= 8) strength++;
+            if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
+            if (/\d/.test(password)) strength++;
+            if (/[^a-zA-Z0-9]/.test(password)) strength++;
+
+            switch(strength) {
+                case 0:
+                case 1:
+                    text = 'Weak';
+                    color = 'danger';
+                    break;
+                case 2:
+                case 3:
+                    text = 'Medium';
+                    color = 'warning';
+                    break;
+                case 4:
+                case 5:
+                    text = 'Strong';
+                    color = 'success';
+                    break;
+            }
+
+            if (password.length > 0) {
+                strengthDiv.innerHTML = `
+                    <div class="progress" style="height: 5px;">
+                        <div class="progress-bar bg-${color}" style="width: ${strength * 20}%"></div>
+                    </div>
+                    <small class="text-${color}">${text}</small>
+                `;
+            } else {
+                strengthDiv.innerHTML = '';
+            }
+        });
+    </script>
+}
