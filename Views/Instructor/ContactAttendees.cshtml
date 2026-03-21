@@ -1,0 +1,199 @@
+@{
+    ViewData["Title"] = "Contact Attendees";
+    var courseId = ViewBag.CourseId;
+    var courseTitle = ViewBag.CourseTitle;
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Header -->
+            <div class="d-flex align-items-center mb-4">
+                <a asp-action="EditCourse" asp-route-id="@courseId" class="btn btn-outline-secondary me-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div>
+                    <h2 class="mb-0">Contact Attendees</h2>
+                    <p class="text-muted mb-0">Course: @courseTitle</p>
+                </div>
+            </div>
+
+            <!-- Main Card -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-envelope me-2"></i> Send Message to Learners
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <form id="contactForm">
+                        <input type="hidden" id="courseId" value="@courseId" />
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-users me-1"></i> Select Recipients
+                            </label>
+                            <select class="form-select" id="recipientFilter">
+                                <option value="all">All Enrolled Learners</option>
+                                <option value="yet-to-start">Yet to Start</option>
+                                <option value="in-progress">In Progress</option>
+                                <option value="completed">Completed</option>
+                            </select>
+                            <div class="form-text">Choose which group of learners to message</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-heading me-1"></i> Subject
+                            </label>
+                            <input type="text" class="form-control" id="emailSubject"
+                                   placeholder="Enter email subject" required />
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-align-left me-1"></i> Message
+                            </label>
+                            <textarea class="form-control" id="emailMessage" rows="10"
+                                      placeholder="Enter your message to learners...&#10;&#10;Tips:&#10;- Keep it concise and clear&#10;- Include relevant course information&#10;- Add a call to action if needed"
+                                      required></textarea>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Your message will be sent to all learners matching the selected filter
+                            </div>
+                        </div>
+
+                        <!-- Message Templates -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-magic me-1"></i> Quick Templates
+                            </label>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button type="button" class="btn btn-outline-secondary btn-sm"
+                                        onclick="useTemplate('reminder')">
+                                    <i class="fas fa-bell me-1"></i> Course Reminder
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm"
+                                        onclick="useTemplate('newContent')">
+                                    <i class="fas fa-plus-circle me-1"></i> New Content
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm"
+                                        onclick="useTemplate('congratulations')">
+                                    <i class="fas fa-trophy me-1"></i> Congratulations
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm"
+                                        onclick="useTemplate('deadline')">
+                                    <i class="fas fa-clock me-1"></i> Deadline Reminder
+                                </button>
+                            </div>
+                        </div>
+
+                        <hr />
+
+                        <div class="d-flex justify-content-between">
+                            <a asp-action="EditCourse" asp-route-id="@courseId" class="btn btn-secondary">
+                                <i class="fas fa-times me-1"></i> Cancel
+                            </a>
+                            <button type="button" class="btn btn-primary btn-lg" onclick="sendMessage()">
+                                <i class="fas fa-paper-plane me-2"></i> Send Message
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+                // Message templates
+                var templates = {
+                    reminder: {
+                        subject: 'Reminder: Continue Your Learning Journey',
+                        message: `Hello,
+
+        This is a friendly reminder to continue your learning in "@courseTitle".
+
+        You've made great progress so far! Log in today to pick up where you left off and move closer to completing the course.
+
+        Happy Learning!
+        Best regards`
+                    },
+                    newContent: {
+                        subject: 'New Content Added to @courseTitle',
+                        message: `Hello,
+
+        We've just added new content to "@courseTitle"!
+
+        Log in now to check out the latest lessons and continue your learning journey.
+
+        Happy Learning!
+        Best regards`
+                    },
+                    congratulations: {
+                        subject: 'Congratulations on Your Progress!',
+                        message: `Hello,
+
+        Congratulations on your excellent progress in "@courseTitle"!
+
+        Keep up the great work. You're doing amazing!
+
+        Best regards`
+                    },
+                    deadline: {
+                        subject: 'Important: Course Deadline Approaching',
+                        message: `Hello,
+
+        This is a reminder that the deadline for completing "@courseTitle" is approaching.
+
+        Please make sure to complete all lessons and quizzes before the deadline.
+
+        If you have any questions, feel free to reach out.
+
+        Best regards`
+                    }
+                };
+
+                function useTemplate(templateKey) {
+                    var template = templates[templateKey];
+                    var courseTitle = '@courseTitle';
+
+                    $('#emailSubject').val(template.subject.replace('@courseTitle', courseTitle));
+                    $('#emailMessage').val(template.message.replace(/@courseTitle/g, courseTitle));
+                }
+
+                function sendMessage() {
+                    var subject = $('#emailSubject').val().trim();
+                    var message = $('#emailMessage').val().trim();
+                    var filter = $('#recipientFilter').val();
+
+                    if (!subject) {
+                        alert('Please enter a subject');
+                        $('#emailSubject').focus();
+                        return;
+                    }
+
+                    if (!message) {
+                        alert('Please enter a message');
+                        $('#emailMessage').focus();
+                        return;
+                    }
+
+                    var btn = event.target;
+                    var originalText = btn.innerHTML;
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Sending...';
+                    btn.disabled = true;
+
+                    // Simulate sending (in production, this would actually send emails)
+                    setTimeout(function() {
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+
+                        alert('Message sent successfully to selected learners!');
+                        $('#emailSubject').val('');
+                        $('#emailMessage').val('');
+                    }, 1500);
+                }
+    </script>
+}
