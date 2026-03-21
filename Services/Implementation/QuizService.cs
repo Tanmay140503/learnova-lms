@@ -1,4 +1,4 @@
-﻿using Learnova.Data;
+using Learnova.Data;
 using Learnova.Models.Entities;
 using Learnova.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
