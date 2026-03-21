@@ -1,92 +1,173 @@
-@model List<Learnova.Models.Entities.Course>
+@model List<Course>
+@using Learnova.Models.Entities
 @{
-    ViewData["Title"] = "All Courses";
+    ViewData["Title"] = "Browse Courses";
+    var search = ViewBag.Search as string ?? "";
+    var userId = ViewBag.UserId as string;
 }
 
-<div class="container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2><i class="fas fa-book"></i> Browse Courses</h2>
-            <p class="text-muted">Discover and learn new skills</p>
+<div class="container-fluid py-4">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <h2 class="fw-bold mb-2">
+                <i class="fas fa-book text-primary me-2"></i>
+                Discover Courses
+            </h2>
+            <p class="text-muted">Explore our extensive library of courses and start learning today</p>
         </div>
-        @if (User.Identity.IsAuthenticated)
-        {
-            <a asp-action="MyCourses" class="btn btn-outline-primary">
-                <i class="fas fa-user-graduate"></i> My Courses
-            </a>
-        }
+        <div class="col-lg-4">
+            <form method="get" class="d-flex gap-2">
+                <input type="text" name="search" class="form-control" 
+                       placeholder="Search by title or tags..." 
+                       value="@search" />
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-search"></i>
+                </button>
+                @if (!string.IsNullOrEmpty(search))
+                {
+                    <a href="@Url.Action("Courses")" class="btn btn-outline-secondary">
+                        <i class="fas fa-times"></i>
+                    </a>
+                }
+            </form>
+        </div>
     </div>
 
-    <!-- Search -->
-    <form asp-action="Courses" method="get" class="mb-4">
-        <div class="input-group input-group-lg">
-            <span class="input-group-text bg-white">
-                <i class="fas fa-search text-muted"></i>
-            </span>
-            <input type="text" name="search" class="form-control border-start-0"
-                   placeholder="Search courses by title or tags..." value="@ViewBag.Search" />
-            <button class="btn btn-primary" type="submit">
-                Search
-            </button>
-        </div>
-    </form>
-
-    @if (!Model.Any())
+    @if (!string.IsNullOrEmpty(search))
     {
-        <div class="alert alert-info text-center">
-            <i class="fas fa-info-circle fa-2x mb-2"></i>
-            <p class="mb-0">No courses available at the moment. Please check back later!</p>
+        <div class="alert alert-info mb-4">
+            <i class="fas fa-search me-2"></i>
+            Showing results for: <strong>@search</strong>
+            (@Model.Count course@(Model.Count != 1 ? "s" : "") found)
+        </div>
+    }
+
+    @if (Model == null || !Model.Any())
+    {
+        <div class="text-center py-5">
+            <div class="display-1 text-muted mb-3">
+                <i class="fas fa-book-open"></i>
+            </div>
+            <h4 class="text-muted mb-3">No courses found</h4>
+            @if (!string.IsNullOrEmpty(search))
+            {
+                <p>Try adjusting your search terms</p>
+                <a href="@Url.Action("Courses")" class="btn btn-primary">
+                    <i class="fas fa-redo me-2"></i> Show All Courses
+                </a>
+            }
+            else
+            {
+                <p>Check back later for new content!</p>
+            }
         </div>
     }
     else
     {
-        <div class="row row-cols-1 row-cols-md-3 g-4">
+        <div class="row g-4">
             @foreach (var course in Model)
             {
-                <div class="col">
-                    <div class="card h-100 shadow-sm course-card">
-                        @if (!string.IsNullOrEmpty(course.CourseImageUrl))
-                        {
-                            <img src="@course.CourseImageUrl" class="card-img-top" alt="@course.Title"
-                                 style="height: 200px; object-fit: cover;" />
-                        }
-                        else
-                        {
-                            <div class="bg-gradient-primary d-flex align-items-center justify-content-center"
-                                 style="height: 200px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                                <i class="fas fa-book fa-4x text-white opacity-75"></i>
-                            </div>
-                        }
-                        <div class="card-body">
-                            <h5 class="card-title">@course.Title</h5>
-                            <p class="card-text text-muted">
-                                @if (!string.IsNullOrEmpty(course.ShortDescription))
-                                {
-                                    @(course.ShortDescription.Length > 100
-                                                            ? course.ShortDescription.Substring(0, 100) + "..."
-                                                            : course.ShortDescription)
-                                }
-                            </p>
+                <div class="col-lg-4 col-md-6">
+                    <div class="card h-100 shadow-sm border-0 hover-lift">
+                        <!-- Course Image -->
+                        <div class="position-relative overflow-hidden" style="height: 200px;">
+                            @if (!string.IsNullOrEmpty(course.CourseImageUrl))
+                            {
+                                <img src="@course.CourseImageUrl" class="card-img-top h-100 w-100" 
+                                     style="object-fit: cover;" alt="@course.Title" />
+                            }
+                            else
+                            {
+                                <div class="bg-gradient-primary h-100 d-flex align-items-center justify-content-center">
+                                    <i class="fas fa-book fa-4x text-white opacity-50"></i>
+                                </div>
+                            }
+                            
+                            <!-- Price Badge -->
+                            @if (course.Price > 0)
+                            {
+                                <span class="badge bg-success position-absolute top-0 end-0 m-3">
+                                    ₹@course.Price.Value.ToString("F2")
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-info position-absolute top-0 end-0 m-3">
+                                    FREE
+                                </span>
+                            }
+                        </div>
 
-                            <div class="d-flex justify-content-between text-muted small mb-2">
-                                <span><i class="fas fa-book-open"></i> @course.TotalLessons lessons</span>
-                                <span><i class="fas fa-clock"></i> @course.TotalDurationMinutes mins</span>
-                            </div>
+                        <div class="card-body d-flex flex-column">
+                            <!-- Course Title -->
+                            <h5 class="card-title fw-bold mb-2">
+                                <a asp-action="CourseDetail" asp-route-id="@course.Id" 
+                                   class="text-decoration-none text-dark stretched-link">
+                                    @course.Title
+                                </a>
+                            </h5>
 
+                            <!-- Short Description -->
+                            @if (!string.IsNullOrEmpty(course.ShortDescription))
+                            {
+                                <p class="card-text text-muted small mb-3">
+                                    @(course.ShortDescription.Length > 100 
+                                        ? course.ShortDescription.Substring(0, 100) + "..." 
+                                        : course.ShortDescription)
+                                </p>
+                            }
+
+                            <!-- Tags -->
                             @if (!string.IsNullOrEmpty(course.Tags))
                             {
-                                <div class="mb-2">
-                                    @foreach (var tag in course.Tags.Split(',').Take(3))
+                                <div class="mb-3">
+                                    @foreach (var tag in course.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries).Take(3))
                                     {
-                                        <span class="badge bg-light text-dark border me-1">@tag.Trim()</span>
+                                        <span class="badge bg-light text-dark me-1 mb-1">
+                                            <i class="fas fa-tag fa-xs me-1"></i>@tag.Trim()
+                                        </span>
                                     }
                                 </div>
                             }
-                        </div>
-                        <div class="card-footer bg-white border-0 pt-0">
-                            <a asp-action="CourseDetail" asp-route-id="@course.Id" class="btn btn-primary w-100">
-                                <i class="fas fa-eye"></i> View Details
-                            </a>
+
+                            <!-- Course Stats -->
+                            <div class="mt-auto">
+                                <div class="d-flex justify-content-between text-muted small mb-2">
+                                    <span>
+                                        <i class="fas fa-book-open me-1"></i>
+                                        @course.TotalLessons lesson@(course.TotalLessons != 1 ? "s" : "")
+                                    </span>
+                                    <span>
+                                        <i class="fas fa-clock me-1"></i>
+                                        @course.TotalDurationMinutes min
+                                    </span>
+                                    <span>
+                                        <i class="fas fa-eye me-1"></i>
+                                        @course.ViewsCount
+                                    </span>
+                                </div>
+
+                                <!-- Access Rule Badge -->
+                                @if (course.AccessRule == "OnInvitation")
+                                {
+                                    <span class="badge bg-warning text-dark w-100">
+                                        <i class="fas fa-lock me-1"></i> Invitation Only
+                                    </span>
+                                }
+                                else if (course.AccessRule == "OnPayment")
+                                {
+                                    <span class="badge bg-primary w-100">
+                                        <i class="fas fa-credit-card me-1"></i> Paid Course
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success w-100">
+                                        <i class="fas fa-unlock me-1"></i> Open Access
+                                    </span>
+                                }
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -95,14 +176,21 @@
     }
 </div>
 
-<style>
-    .course-card {
-        transition: all 0.3s ease;
-        border: none;
-    }
+@section Scripts {
+    <script>
+        // Search functionality already handled by form submit
+    </script>
+}
 
-        .course-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 12px 24px rgba(0,0,0,0.15) !important;
-        }
+<style>
+    .hover-lift {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .hover-lift:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
+    }
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
 </style>
