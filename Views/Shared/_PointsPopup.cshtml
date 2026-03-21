@@ -1,0 +1,50 @@
+﻿@* Points Earned Popup *@
+<div id="pointsPopupOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+     background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:white; border-radius:20px; padding:40px; text-align:center;
+         max-width:400px; width:90%; animation: popIn 0.5s ease;">
+        <div style="font-size:60px; margin-bottom:15px;">🎉</div>
+        <h3 class="fw-bold mb-2">Points Earned!</h3>
+        <div id="popupPointsValue"
+             style="font-size:48px; font-weight:bold; color:#28a745; margin:15px 0;">
+        </div>
+        <p class="text-muted mb-2">
+            Total Points: <strong id="popupTotalPoints"></strong>
+        </p>
+        <p class="mb-3">
+            Badge: <span id="popupBadge" class="badge bg-primary fs-6"></span>
+        </p>
+        <button type="button" class="btn btn-primary" onclick="closePointsPopup()">
+            <i class="fas fa-thumbs-up me-1"></i> Awesome!
+        </button>
+    </div>
+</div>
+
+<style>
+    @@keyframes popIn {
+        0% {
+            transform: scale(0.5);
+            opacity: 0;
+        }
+
+        100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+</style>
+
+<script>
+    function showPointsPopup(pointsEarned, totalPoints, badge) {
+        document.getElementById('popupPointsValue').textContent = '+' + pointsEarned;
+        document.getElementById('popupTotalPoints').textContent = totalPoints;
+        document.getElementById('popupBadge').textContent = badge;
+
+        var overlay = document.getElementById('pointsPopupOverlay');
+        overlay.style.display = 'flex';
+    }
+
+    function closePointsPopup() {
+        document.getElementById('pointsPopupOverlay').style.display = 'none';
+    }
+</script>
