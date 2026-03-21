@@ -1,0 +1,108 @@
+@model List<Learnova.Models.Entities.Course>
+@{
+    ViewData["Title"] = "All Courses";
+}
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="fas fa-book"></i> Browse Courses</h2>
+            <p class="text-muted">Discover and learn new skills</p>
+        </div>
+        @if (User.Identity.IsAuthenticated)
+        {
+            <a asp-action="MyCourses" class="btn btn-outline-primary">
+                <i class="fas fa-user-graduate"></i> My Courses
+            </a>
+        }
+    </div>
+
+    <!-- Search -->
+    <form asp-action="Courses" method="get" class="mb-4">
+        <div class="input-group input-group-lg">
+            <span class="input-group-text bg-white">
+                <i class="fas fa-search text-muted"></i>
+            </span>
+            <input type="text" name="search" class="form-control border-start-0"
+                   placeholder="Search courses by title or tags..." value="@ViewBag.Search" />
+            <button class="btn btn-primary" type="submit">
+                Search
+            </button>
+        </div>
+    </form>
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info text-center">
+            <i class="fas fa-info-circle fa-2x mb-2"></i>
+            <p class="mb-0">No courses available at the moment. Please check back later!</p>
+        </div>
+    }
+    else
+    {
+        <div class="row row-cols-1 row-cols-md-3 g-4">
+            @foreach (var course in Model)
+            {
+                <div class="col">
+                    <div class="card h-100 shadow-sm course-card">
+                        @if (!string.IsNullOrEmpty(course.CourseImageUrl))
+                        {
+                            <img src="@course.CourseImageUrl" class="card-img-top" alt="@course.Title"
+                                 style="height: 200px; object-fit: cover;" />
+                        }
+                        else
+                        {
+                            <div class="bg-gradient-primary d-flex align-items-center justify-content-center"
+                                 style="height: 200px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                                <i class="fas fa-book fa-4x text-white opacity-75"></i>
+                            </div>
+                        }
+                        <div class="card-body">
+                            <h5 class="card-title">@course.Title</h5>
+                            <p class="card-text text-muted">
+                                @if (!string.IsNullOrEmpty(course.ShortDescription))
+                                {
+                                    @(course.ShortDescription.Length > 100
+                                                            ? course.ShortDescription.Substring(0, 100) + "..."
+                                                            : course.ShortDescription)
+                                }
+                            </p>
+
+                            <div class="d-flex justify-content-between text-muted small mb-2">
+                                <span><i class="fas fa-book-open"></i> @course.TotalLessons lessons</span>
+                                <span><i class="fas fa-clock"></i> @course.TotalDurationMinutes mins</span>
+                            </div>
+
+                            @if (!string.IsNullOrEmpty(course.Tags))
+                            {
+                                <div class="mb-2">
+                                    @foreach (var tag in course.Tags.Split(',').Take(3))
+                                    {
+                                        <span class="badge bg-light text-dark border me-1">@tag.Trim()</span>
+                                    }
+                                </div>
+                            }
+                        </div>
+                        <div class="card-footer bg-white border-0 pt-0">
+                            <a asp-action="CourseDetail" asp-route-id="@course.Id" class="btn btn-primary w-100">
+                                <i class="fas fa-eye"></i> View Details
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .course-card {
+        transition: all 0.3s ease;
+        border: none;
+    }
+
+        .course-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.15) !important;
+        }
+</style>
