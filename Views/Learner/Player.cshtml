@@ -1,482 +1,124 @@
-@model Learnova.Models.Entities.Lesson
+@model Lesson
 @{
-    Layout = null;
-    var course = ViewBag.Course as Learnova.Models.Entities.Course;
-    var lessons = ViewBag.Lessons as List<Learnova.Models.Entities.Lesson>;
-    var progresses = ViewBag.Progresses as List<Learnova.Models.Entities.LessonProgress>;
-    var enrollment = ViewBag.Enrollment as Learnova.Models.Entities.CourseEnrollment;
-    var currentUser = ViewBag.CurrentUser as Learnova.Models.Entities.ApplicationUser;
-
-    var currentIndex = lessons.FindIndex(l => l.Id == Model.Id);
-    var nextLesson = currentIndex < lessons.Count - 1 ? lessons[currentIndex + 1] : null;
-    var prevLesson = currentIndex > 0 ? lessons[currentIndex - 1] : null;
-    var isCompleted = progresses?.Any(p => p.LessonId == Model.Id && p.IsCompleted) ?? false;
+    ViewData["Title"] = Model.Title;
+    var course = ViewBag.Course as Course;
+    var lessons = ViewBag.Lessons as List<Lesson> ?? new();
+    var progresses = ViewBag.Progresses as List<LessonProgress> ?? new();
+    var enrollment = ViewBag.Enrollment as CourseEnrollment;
+    var idx = lessons.FindIndex(l => l.Id == Model.Id);
+    var prev = idx > 0 ? lessons[idx-1] : null;
+    var next = idx < lessons.Count-1 ? lessons[idx+1] : null;
 }
 
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@Model.Title - @course.Title</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <title>@Model.Title - Player</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            overflow: hidden;
-        }
-
-        .fullscreen-player {
-            display: flex;
-            height: 100vh;
-            background: #000;
-        }
-
-        .player-sidebar {
-            width: 350px;
-            background: #fff;
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            overflow: hidden;
-            transition: margin-left 0.3s;
-        }
-
-            .player-sidebar.hidden {
-                margin-left: -350px;
-            }
-
-        .sidebar-header {
-            padding: 20px;
-            border-bottom: 1px solid #e0e0e0;
-            background: #f8f9fa;
-        }
-
-        .lesson-list {
-            flex: 1;
-            overflow-y: auto;
+        body { margin:0; background:#111; color:#fff; overflow:hidden; }
+        .player-layout { display:flex; height:100vh; }
+        .sidebar { width:320px; background:#1a1a1a; border-right:1px solid #333; transition:transform .3s; overflow-y:auto; }
+        .sidebar.collapsed { transform:translateX(-100%); position:absolute; z-index:10; }
+        .main-area { flex:1; display:flex; flex-direction:column; background:#000; }
+        .viewer { flex:1; display:flex; align-items:center; justify-content:center; padding:20px; }
+        .viewer video, .viewer img { max-width:100%; max-height:80vh; border-radius:8px; }
+        .controls { padding:15px; background:#1a1a1a; display:flex; justify-content:space-between; align-items:center; }
+        .lesson-row { padding:12px; border-bottom:1px solid #333; cursor:pointer; display:flex; align-items:center; }
+        .lesson-row:hover { background:#252525; }
+        .lesson-row.active { background:#0d6efd; }
+        .toggle-btn { position:fixed; left:10px; top:10px; z-index:20; background:#333; color:#fff; border:none; padding:8px 12px; border-radius:4px; }
+        .attachments, .LessonAttachments {
+            background: #222;
             padding: 10px;
-        }
-
-        .lesson-item {
-            padding: 12px 15px;
-            margin-bottom: 8px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            text-decoration: none;
-            color: #333;
-            border: 1px solid transparent;
-        }
-
-            .lesson-item:hover {
-                background: #f0f0f0;
-            }
-
-            .lesson-item.active {
-                background: #e3f2fd;
-                border-color: #2196F3;
-            }
-
-            .lesson-item.completed {
-                opacity: 0.8;
-            }
-
-        .lesson-status {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 12px;
-            flex-shrink: 0;
-        }
-
-            .lesson-status.incomplete {
-                background: #e0e0e0;
-                color: #757575;
-            }
-
-            .lesson-status.complete {
-                background: #4CAF50;
-                color: white;
-            }
-
-            .lesson-status.in-progress {
-                background: #2196F3;
-                color: white;
-            }
-
-        .player-main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background: #000;
-        }
-
-        .player-topbar {
-            background: #fff;
-            padding: 15px 20px;
-            border-bottom: 1px solid #e0e0e0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .player-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-            background: #1a1a1a;
-        }
-
-        .content-viewer {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            background: #000;
-        }
-
-        .content-description {
-            background: #2a2a2a;
-            padding: 20px;
-            color: #fff;
-        }
-
-        .player-controls {
-            background: #fff;
-            padding: 15px 20px;
-            border-top: 1px solid #e0e0e0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .video-container {
-            width: 100%;
-            max-width: 1200px;
-            aspect-ratio: 16/9;
-        }
-
-            .video-container iframe {
-                width: 100%;
-                height: 100%;
-                border: none;
-                border-radius: 8px;
-            }
-
-        .document-viewer {
-            width: 100%;
-            max-width: 900px;
-            height: 80vh;
-            background: #fff;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .image-viewer {
-            max-width: 100%;
-            max-height: 80vh;
-            border-radius: 8px;
-        }
-
-        .progress-ring {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: conic-gradient( #4CAF50 @(enrollment.CompletionPercentage * 3.6m) deg, #e0e0e0 @(enrollment.CompletionPercentage * 3.6m) deg );
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-        }
-
-            .progress-ring::before {
-                content: "";
-                width: 46px;
-                height: 46px;
-                border-radius: 50%;
-                background: #fff;
-                position: absolute;
-            }
-
-        .progress-text {
-            position: relative;
-            z-index: 1;
-            font-weight: bold;
-            font-size: 14px;
-        }
-
-        @@media (max-width: 768px) {
-            .player-sidebar {
-                position: absolute;
-                z-index: 1000;
-                box-shadow: 2px 0 10px rgba(0,0,0,0.3);
-            }
+            margin-top: 5px;
+            border-radius: 4px;
+            font-size: 0.85rem;
         }
     </style>
 </head>
 <body>
-    <div class="fullscreen-player">
-        <!-- Sidebar -->
-        <div class="player-sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 class="m-0">@course.Title</h6>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="toggleSidebar()">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-
-                <div class="d-flex align-items-center">
-                    <div class="progress-ring me-3">
-                        <span class="progress-text">@enrollment.CompletionPercentage.ToString("F0")%</span>
-                    </div>
+    <button class="toggle-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+    
+    <div class="player-layout">
+        <div class="sidebar" id="sidebar">
+            <div class="p-3 border-bottom border-secondary">
+                <h5 class="fw-bold mb-1">@course.Title</h5>
+                <small class="text-muted">@enrollment.CompletionPercentage% Complete</small>
+            </div>
+            @foreach(var l in lessons){
+                var done = progresses.Any(p => p.LessonId == l.Id && p.IsCompleted);
+                var isAct = l.Id == Model.Id;
+                <div class="lesson-row @(isAct?"active":"")" onclick="location.href='@Url.Action("Player", new{lessonId=l.Id})'">
+                    <i class="fas fa-@(done?"check-circle text-success":"circle text-muted") me-2"></i>
                     <div class="flex-grow-1">
-                        <div class="small text-muted mb-1">Your Progress</div>
-                        <div class="progress" style="height: 6px;">
-                            <div class="progress-bar bg-success" style="width: @enrollment.CompletionPercentage%"></div>
-                        </div>
-                        <div class="small text-muted mt-1">
-                            @(progresses?.Count(p => p.IsCompleted) ?? 0) of @lessons.Count lessons
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="lesson-list">
-                @foreach (var lesson in lessons.OrderBy(l => l.OrderIndex))
-                {
-                    var lessonCompleted = progresses?.Any(p => p.LessonId == lesson.Id && p.IsCompleted) ?? false;
-                    var isActive = lesson.Id == Model.Id;
-
-                    <a href="@Url.Action("Player", "Learner", new { lessonId = lesson.Id })"
-                       class="lesson-item @(isActive ? "active" : "") @(lessonCompleted ? "completed" : "")">
-                        <div class="lesson-status @(lessonCompleted ? "complete" : isActive ? "in-progress" : "incomplete")">
-                            @if (lessonCompleted)
-                            {
-                                <i class="fas fa-check"></i>
-                            }
-                            else if (isActive)
-                            {
-                                <i class="fas fa-play"></i>
-                            }
-                            else
-                            {
-                                <i class="fas fa-circle"></i>
-                            }
-                        </div>
-                        <div class="flex-grow-1">
-                            <div class="small text-muted">
-                                <i class="fas @(lesson.LessonType == "Video" ? "fa-video" :
-                                                                                  lesson.LessonType == "Document" ? "fa-file-alt" :
-                                                                                  lesson.LessonType == "Image" ? "fa-image" : "fa-question-circle")"></i>
-                                @lesson.LessonType
-                            </div>
-                            <div class="fw-medium">@lesson.Title</div>
-                            @if (lesson.DurationMinutes.HasValue)
-                            {
-                                <div class="small text-muted">
-                                    <i class="fas fa-clock"></i> @lesson.DurationMinutes mins
-                                </div>
-                            }
-                        </div>
-                    </a>
-                }
-            </div>
-        </div>
-
-        <!-- Main Player -->
-        <div class="player-main">
-            <!-- Top Bar -->
-            <div class="player-topbar">
-                <div>
-                    <button class="btn btn-outline-secondary me-2" id="toggleSidebarBtn" onclick="toggleSidebar()">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                    <a href="@Url.Action("CourseDetail", "Learner", new { id = course.Id })" class="btn btn-outline-danger">
-                        <i class="fas fa-times"></i> Exit Player
-                    </a>
-                </div>
-                <div class="text-center">
-                    <h5 class="m-0">@Model.Title</h5>
-                    <small class="text-muted">Lesson @(currentIndex + 1) of @lessons.Count</small>
-                </div>
-                <div>
-                    @if (isCompleted)
-                    {
-                        <span class="badge bg-success">
-                            <i class="fas fa-check-circle"></i> Completed
-                        </span>
-                    }
-                </div>
-            </div>
-
-            <!-- Content Area -->
-            <div class="player-content">
-                <div class="content-viewer">
-                    @if (Model.LessonType == "Video")
-                    {
-                        <div class="video-container">
-                            @{
-                                var videoUrl = Model.VideoUrl;
-                                if (videoUrl.Contains("youtube.com/watch"))
-                                {
-                                    videoUrl = videoUrl.Replace("watch?v=", "embed/");
-                                }
-                                else if (videoUrl.Contains("youtu.be/"))
-                                {
-                                    videoUrl = videoUrl.Replace("youtu.be/", "youtube.com/embed/");
-                                }
-                            }
-                            <iframe src="@videoUrl" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
-                        </div>
-                    }
-                    else if (Model.LessonType == "Document")
-                    {
-                        <div class="document-viewer">
-                            <iframe src="@Model.DocumentUrl" width="100%" height="100%"></iframe>
-                        </div>
-                    }
-                    else if (Model.LessonType == "Image")
-                    {
-                        <img src="@Model.ImageUrl" class="image-viewer" alt="@Model.Title" />
-                    }
-                </div>
-
-                @if (!string.IsNullOrEmpty(Model.Description))
-                {
-                    <div class="content-description">
-                        <h6 class="text-white mb-3">
-                            <i class="fas fa-info-circle"></i> About this lesson
-                        </h6>
-                        <p class="text-white-50 mb-0">@Model.Description</p>
-                    </div>
-                }
-
-                @if (Model.Attachments != null && Model.Attachments.Any())
-                {
-                    <div class="content-description border-top border-secondary">
-                        <h6 class="text-white mb-3">
-                            <i class="fas fa-paperclip"></i> Additional Resources
-                        </h6>
-                        @foreach (var attachment in Model.Attachments)
-                        {
-                            <div class="mb-2">
-                                @if (attachment.AttachmentType == "File")
-                                {
-                                    <a href="@attachment.FileUrl" target="_blank" class="text-white">
-                                        <i class="fas fa-download"></i> @attachment.Title
-                                    </a>
-                                }
-                                else
-                                {
-                                    <a href="@attachment.ExternalLink" target="_blank" class="text-white">
-                                        <i class="fas fa-external-link-alt"></i> @attachment.Title
-                                    </a>
-                                }
+                        <div class="fw-bold">@l.Title</div>
+                        <div class="small text-muted">@l.LessonType</div>
+                        @if(l.LessonAttachments?.Any() == true){
+                            <div class="attachments">
+                                <i class="fas fa-paperclip me-1"></i> @l.LessonAttachments.Count attachment(s)
                             </div>
                         }
                     </div>
+                </div>
+            }
+        </div>
+
+        <div class="main-area">
+            <div class="p-3 bg-dark border-bottom border-secondary">
+                <h4 class="mb-1">@Model.Title</h4>
+                <p class="text-muted small mb-0">@Model.Description</p>
+            </div>
+            
+            <div class="viewer">
+                @if(Model.LessonType == "Video" && !string.IsNullOrEmpty(Model.VideoUrl)){
+                    var vidId = Model.VideoUrl.Contains("youtu") ? Model.VideoUrl.Split('/').Last().Split('?')[0] : "";
+                    if(!string.IsNullOrEmpty(vidId)){
+                        <iframe width="100%" height="100%" src="https://www.youtube.com/embed/@vidId" frameborder="0" allowfullscreen></iframe>
+                    } else {
+                        <video controls src="@Model.VideoUrl" style="max-height:80vh;"></video>
+                    }
+                } else if(Model.LessonType == "Document" && !string.IsNullOrEmpty(Model.DocumentUrl)){
+                    <iframe src="@Model.DocumentUrl" style="width:100%; height:80vh; border:none;"></iframe>
+                } else if(Model.LessonType == "Image" && !string.IsNullOrEmpty(Model.ImageUrl)){
+                    <img src="@Model.ImageUrl" />
+                } else {
+                    <div class="text-center text-muted"><i class="fas fa-file fa-3x mb-2"></i><br>Content not available</div>
                 }
             </div>
 
-            <!-- Controls -->
-            <div class="player-controls">
+            <div class="controls">
+                <button class="btn btn-secondary" onclick="window.history.back()"><i class="fas fa-arrow-left"></i> Back</button>
                 <div>
-                    @if (prevLesson != null)
-                    {
-                        <a href="@Url.Action("Player", "Learner", new { lessonId = prevLesson.Id })" class="btn btn-outline-secondary">
-                            <i class="fas fa-arrow-left"></i> Previous
-                        </a>
+                    @if(!progresses.Any(p => p.LessonId == Model.Id && p.IsCompleted)){
+                        <button class="btn btn-success me-2" onclick="markComplete(@Model.Id)"><i class="fas fa-check"></i> Mark Complete</button>
                     }
-                </div>
-                <div>
-                    @if (!isCompleted)
-                    {
-                        <button class="btn btn-success" onclick="markComplete()">
-                            <i class="fas fa-check"></i> Mark as Complete
-                        </button>
-                    }
-                    else
-                    {
-                        <button class="btn btn-outline-success" disabled>
-                            <i class="fas fa-check-circle"></i> Completed
-                        </button>
-                    }
-                </div>
-                <div>
-                    @if (nextLesson != null)
-                    {
-                        <a href="@Url.Action("Player", "Learner", new { lessonId = nextLesson.Id })" class="btn btn-primary">
-                            Next <i class="fas fa-arrow-right"></i>
-                        </a>
-                    }
-                    else
-                    {
-                        <button class="btn btn-success" onclick="completeCourse()">
-                            <i class="fas fa-trophy"></i> Complete Course
-                        </button>
+                    @if(next != null){
+                        <a href="@Url.Action("Player", new{lessonId=next.Id})" class="btn btn-primary">Next <i class="fas fa-arrow-right"></i></a>
+                    } else {
+                        <button class="btn btn-warning" onclick="completeCourse(@course.Id)"><i class="fas fa-trophy"></i> Complete Course</button>
                     }
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
+    @await Html.PartialAsync("_PointsPopup")
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script>
-        let sidebarVisible = true;
-
-        function toggleSidebar() {
-            sidebarVisible = !sidebarVisible;
-            $('#sidebar').toggleClass('hidden');
-
-            if (sidebarVisible) {
-                $('#toggleSidebarBtn i').removeClass('fa-bars').addClass('fa-times');
-            } else {
-                $('#toggleSidebarBtn i').removeClass('fa-times').addClass('fa-bars');
-            }
-        }
-
-        function markComplete() {
-            $.post('@Url.Action("CompleteLesson", "Learner")', { lessonId: @Model.Id }, function(response) {
-                if (response.success) {
-                    showPointsPopup(response);
-                    setTimeout(function() {
-                        location.reload();
-                    }, 2000);
-                }
+        function toggleSidebar(){ $('#sidebar').toggleClass('collapsed'); }
+        function markComplete(id){
+            $.post('@Url.Action("MarkLessonComplete")', {lessonId:id}).done(res=>{
+                if(res.success) location.reload();
             });
         }
-
-        function completeCourse() {
-            if (confirm('Congratulations! Complete this course and earn your certificate?')) {
-                alert('🎉 Course Completed! Certificate will be generated.');
-                window.location.href = '@Url.Action("MyCourses", "Learner")';
-            }
-        }
-
-        function showPointsPopup(data) {
-            // Could show a nice popup here for points earned
-            if (data.completionPercentage == 100) {
-                alert('🎉 Congratulations! You completed this course!');
-            }
-        }
-
-        // Auto-hide sidebar on mobile
-        if (window.innerWidth <= 768) {
-            toggleSidebar();
+        function completeCourse(courseId){
+            $.post('@Url.Action("CompleteCourse")', {courseId}).done(res=>{
+                alert(res.message);
+                if(res.success) window.location.href = '@Url.Action("MyCourses")';
+            });
         }
     </script>
 </body>
