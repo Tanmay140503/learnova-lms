@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Learnova.Models.Entities
 {
@@ -7,12 +8,12 @@ namespace Learnova.Models.Entities
         public int Id { get; set; }
 
         [Required]
-        public string Title { get; set; }
+        public string Title { get; set; } = string.Empty;
 
         public string? Description { get; set; }
 
         [Required]
-        public string LessonType { get; set; } // Video, Document, Image, Quiz
+        public string LessonType { get; set; } = "Video"; // Video, Document, Image, Quiz
 
         // Type-specific fields
         public string? VideoUrl { get; set; }
@@ -26,16 +27,20 @@ namespace Learnova.Models.Entities
 
         // Responsible
         public string? ResponsibleUserId { get; set; }
+
+        [ForeignKey("ResponsibleUserId")]
         public ApplicationUser? ResponsibleUser { get; set; }
 
         // Foreign Key
         public int CourseId { get; set; }
-        public Course Course { get; set; }
+
+        [ForeignKey("CourseId")]
+        public Course Course { get; set; } = null!;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        // Navigation Properties
-        public ICollection<LessonAttachment> Attachments { get; set; }
-        public ICollection<LessonProgress> LessonProgresses { get; set; }
+        //  Navigation Properties 
+        public ICollection<LessonAttachment> LessonAttachments { get; set; } = new List<LessonAttachment>();
+        public ICollection<LessonProgress> LessonProgresses { get; set; } = new List<LessonProgress>();
     }
 }
