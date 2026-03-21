@@ -1,0 +1,310 @@
+@model Quiz
+@{
+    ViewData["Title"] = Model.Title;
+    var attemptNum = (int)ViewBag.AttemptNumber;
+    var courseId = (int)ViewBag.CourseId;
+    var questions = Model.Questions?.OrderBy(q => q.OrderIndex).ToList()
+                    ?? new List<QuizQuestion>();
+    var totalQuestions = questions.Count;
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-body p-4">
+
+                    @* ===== INTRO SCREEN ===== *@
+                    <div id="quizIntro">
+                        <h3 class="fw-bold mb-3">@Model.Title</h3>
+                        <p class="text-muted">@Model.Description</p>
+                        <div class="alert alert-info">
+                            <ul class="mb-0">
+                                <li>Total Questions: <strong>@totalQuestions</strong></li>
+                                <li>Attempt: <strong>#@attemptNum</strong></li>
+                                <li>Multiple attempts allowed. Points decrease per attempt.</li>
+                            </ul>
+                        </div>
+                        <button type="button" class="btn btn-primary btn-lg" onclick="startQuiz()">
+                            <i class="fas fa-play me-2"></i>Start Quiz
+                        </button>
+                        <a asp-action="CourseDetail" asp-route-id="@courseId"
+                           class="btn btn-outline-secondary btn-lg ms-2">Cancel</a>
+                    </div>
+
+                    @* ===== QUIZ QUESTIONS AREA ===== *@
+                    <div id="quizArea" style="display:none;">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="badge bg-primary fs-6" id="qProgress">
+                                Question 1 / @totalQuestions
+                            </span>
+                            <span class="text-muted">Attempt #@attemptNum</span>
+                        </div>
+
+                        @* Progress Bar *@
+                        <div class="progress mb-4" style="height: 6px;">
+                            <div class="progress-bar bg-success" id="quizProgressBar"
+                                 style="width: @(totalQuestions > 0 ? (1.0 / totalQuestions * 100) : 0)%">
+                            </div>
+                        </div>
+
+                        @for (int i = 0; i < totalQuestions; i++)
+                        {
+                            var question = questions[i];
+
+                            <div class="question-page"
+                                 id="questionPage_@(i)"
+                                 data-question-id="@(question.Id)"
+                                 data-index="@(i)"
+                                 style="@(i == 0 ? "display:block" : "display:none")">
+
+                                <h5 class="mb-3">
+                                    <span class="text-primary">Q@(i + 1).</span> @question.QuestionText
+                                </h5>
+
+                                <div class="list-group mb-4">
+                                    @foreach (var opt in question.Options)
+                                    {
+                                        <label class="list-group-item list-group-item-action d-flex align-items-center"
+                                               style="cursor:pointer;">
+                                            <input type="radio"
+                                                   name="question_@(question.Id)"
+                                                   value="@(opt.Id)"
+                                                   class="form-check-input me-3" />
+                                            <span>@opt.OptionText</span>
+                                        </label>
+                                    }
+                                </div>
+
+                                <div class="d-flex justify-content-between">
+                                    @if (i > 0)
+                                    {
+                                        <button type="button" class="btn btn-outline-secondary"
+                                                onclick="goToQuestion(@(i - 1))">
+                                            <i class="fas fa-arrow-left me-1"></i> Back
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <div></div> @* spacer *@
+                                    }
+
+                                    @if (i == totalQuestions - 1)
+                                    {
+                                        @* LAST QUESTION - Submit Button *@
+                                        <button type="button" class="btn btn-success"
+                                                onclick="saveAnswerAndSubmit(@(i), @(question.Id))">
+                                            <i class="fas fa-check me-1"></i> Complete Quiz
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        @* NOT LAST - Proceed Button *@
+                                        <button type="button" class="btn btn-primary"
+                                                onclick="saveAnswerAndNext(@(i), @(question.Id))">
+                                            Proceed <i class="fas fa-arrow-right ms-1"></i>
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    @* ===== RESULT SCREEN ===== *@
+                    <div id="quizResult" style="display:none;">
+                        <div class="text-center py-4">
+                            <div id="resultIcon" class="mb-3"></div>
+                            <h3 id="resultTitle" class="fw-bold mb-2"></h3>
+                            <p id="resultMessage" class="text-muted mb-3"></p>
+                            <h1 id="resultScore" class="display-4 fw-bold mb-3"></h1>
+                            <div id="resultPoints" class="mb-4"></div>
+                            <a asp-action="CourseDetail" asp-route-id="@courseId"
+                               class="btn btn-primary btn-lg">
+                                <i class="fas fa-arrow-left me-2"></i> Back to Course
+                            </a>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@await Html.PartialAsync("_PointsPopup")
+
+@section Scripts {
+    <script>
+        // ===== QUIZ CONFIGURATION =====
+        const TOTAL_QUESTIONS = @(totalQuestions);
+        const QUIZ_ID = @(Model.Id);
+        const COURSE_ID = @(courseId);
+        const answers = {};
+        let currentQuestionIndex = 0;
+
+        console.log('Quiz loaded. Questions:', TOTAL_QUESTIONS, 'QuizId:', QUIZ_ID);
+
+        // ===== START QUIZ =====
+        function startQuiz() {
+            document.getElementById('quizIntro').style.display = 'none';
+            document.getElementById('quizArea').style.display = 'block';
+            console.log('Quiz started');
+        }
+
+        // ===== NAVIGATE TO SPECIFIC QUESTION =====
+        function goToQuestion(targetIndex) {
+            if (targetIndex < 0 || targetIndex >= TOTAL_QUESTIONS) {
+                console.error('Invalid question index:', targetIndex);
+                return;
+            }
+
+            // Hide ALL question pages
+            var allPages = document.querySelectorAll('.question-page');
+            for (var p = 0; p < allPages.length; p++) {
+                allPages[p].style.display = 'none';
+            }
+
+            // Show target page
+            var targetPage = document.getElementById('questionPage_' + targetIndex);
+            if (targetPage) {
+                targetPage.style.display = 'block';
+                currentQuestionIndex = targetIndex;
+
+                // Update progress badge
+                document.getElementById('qProgress').textContent =
+                    'Question ' + (targetIndex + 1) + ' / ' + TOTAL_QUESTIONS;
+
+                // Update progress bar
+                var pct = ((targetIndex + 1) / TOTAL_QUESTIONS) * 100;
+                document.getElementById('quizProgressBar').style.width = pct + '%';
+
+                console.log('Showing question', targetIndex + 1, 'of', TOTAL_QUESTIONS);
+            } else {
+                console.error('Question page not found: questionPage_' + targetIndex);
+            }
+        }
+
+        // ===== GET SELECTED ANSWER FOR A QUESTION =====
+        function getSelectedAnswer(questionId) {
+            var radios = document.querySelectorAll('input[name="question_' + questionId + '"]');
+            for (var r = 0; r < radios.length; r++) {
+                if (radios[r].checked) {
+                    return parseInt(radios[r].value);
+                }
+            }
+            return null;
+        }
+
+        // ===== SAVE ANSWER AND GO NEXT =====
+        function saveAnswerAndNext(currentIndex, questionId) {
+            console.log('saveAnswerAndNext called. Index:', currentIndex, 'QuestionId:', questionId);
+
+            var selectedAnswer = getSelectedAnswer(questionId);
+            if (selectedAnswer === null) {
+                alert('Please select an option before proceeding.');
+                return;
+            }
+
+            // Save answer
+            answers[questionId] = selectedAnswer;
+            console.log('Answer saved:', questionId, '->', selectedAnswer);
+
+            // Go to next question
+            goToQuestion(currentIndex + 1);
+        }
+
+        // ===== SAVE ANSWER AND SUBMIT QUIZ =====
+        function saveAnswerAndSubmit(currentIndex, questionId) {
+            console.log('saveAnswerAndSubmit called. Index:', currentIndex, 'QuestionId:', questionId);
+
+            var selectedAnswer = getSelectedAnswer(questionId);
+            if (selectedAnswer === null) {
+                alert('Please select an option before submitting.');
+                return;
+            }
+
+            // Save last answer
+            answers[questionId] = selectedAnswer;
+            console.log('Final answers:', JSON.stringify(answers));
+
+            // Submit
+            submitQuiz();
+        }
+
+        // ===== SUBMIT QUIZ VIA AJAX =====
+        function submitQuiz() {
+            // Build form data that ASP.NET Core can bind to Dictionary<int,int>
+            var formData = { quizId: QUIZ_ID };
+            var keys = Object.keys(answers);
+            for (var k = 0; k < keys.length; k++) {
+                formData['answers[' + keys[k] + ']'] = answers[keys[k]];
+            }
+
+            console.log('Submitting quiz data:', formData);
+
+            // Disable all buttons during submission
+            var buttons = document.querySelectorAll('#quizArea button');
+            for (var b = 0; b < buttons.length; b++) {
+                buttons[b].disabled = true;
+            }
+
+            $.ajax({
+                url: '@Url.Action("SubmitQuiz")',
+                type: 'POST',
+                data: formData,
+                success: function(res) {
+                    console.log('Quiz response:', res);
+                    if (res.success) {
+                        showResult(res);
+
+                        if (typeof showPointsPopup === 'function' && res.pointsEarned > 0) {
+                            showPointsPopup(res.pointsEarned, res.totalPoints, res.badge);
+                        }
+                    } else {
+                        alert(res.message || 'Error submitting quiz. Please try again.');
+                        // Re-enable buttons
+                        for (var b2 = 0; b2 < buttons.length; b2++) {
+                            buttons[b2].disabled = false;
+                        }
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Submit failed:', status, error, xhr.responseText);
+                    alert('Network error. Please check your connection and try again.');
+                    // Re-enable buttons
+                    for (var b3 = 0; b3 < buttons.length; b3++) {
+                        buttons[b3].disabled = false;
+                    }
+                }
+            });
+        }
+
+        // ===== SHOW RESULT SCREEN =====
+        function showResult(res) {
+            document.getElementById('quizArea').style.display = 'none';
+            document.getElementById('quizResult').style.display = 'block';
+
+            var passed = res.passed;
+            var score = res.score;
+
+            document.getElementById('resultIcon').innerHTML = passed
+                ? '<i class="fas fa-trophy fa-4x text-warning"></i>'
+                : '<i class="fas fa-redo fa-4x text-danger"></i>';
+
+            document.getElementById('resultTitle').textContent = passed
+                ? 'Congratulations!' : 'Keep Trying!';
+
+            document.getElementById('resultMessage').textContent = passed
+                ? 'You passed the quiz!' : 'You did not pass. Try again to earn points.';
+
+            document.getElementById('resultScore').innerHTML =
+                '<span class="' + (passed ? 'text-success' : 'text-danger') + '">' + score + '%</span>';
+
+            if (res.pointsEarned > 0) {
+                document.getElementById('resultPoints').innerHTML =
+                    '<span class="badge bg-success fs-5"><i class="fas fa-star me-1"></i>+' +
+                    res.pointsEarned + ' Points Earned!</span>';
+            }
+        }
+    </script>
+}
