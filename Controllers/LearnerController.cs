@@ -1,12 +1,15 @@
-﻿using Learnova.Models.Entities;
+using Learnova.Data;
+using Learnova.Models.Entities;
 using Learnova.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using System.Text.Json;
 
 namespace Learnova.Controllers
 {
+    [Authorize]
     public class LearnerController : Controller
     {
         private readonly ICourseService _courseService;
@@ -18,12 +21,8 @@ namespace Learnova.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
 
         public LearnerController(
-            ICourseService courseService,
-            ILessonService lessonService,
-            IQuizService quizService,
-            IEnrollmentService enrollmentService,
-            IProgressService progressService,
-            IReviewService reviewService,
+            ICourseService courseService, ILessonService lessonService, IQuizService quizService,
+            IEnrollmentService enrollmentService, IProgressService progressService, IReviewService reviewService,
             UserManager<ApplicationUser> userManager)
         {
             _courseService = courseService;
@@ -35,95 +34,73 @@ namespace Learnova.Controllers
             _userManager = userManager;
         }
 
-        // ============ BROWSE COURSES ============
+        // Helper: Badge Calculation
+        private string CalculateBadge(int points)
+        {
+            return points switch
+            {
+                >= 120 => "Master",
+                >= 100 => "Expert",
+                >= 80 => "Specialist",
+                >= 60 => "Achiever",
+                >= 40 => "Explorer",
+                >= 20 => "Newbie",
+                _ => "Beginner"
+            };
+        }
 
+        // B1 & B2: Browse & My Courses
+        [AllowAnonymous]
         public async Task<IActionResult> Courses(string search = "")
         {
             var isAuthenticated = User.Identity?.IsAuthenticated ?? false;
             var courses = await _courseService.GetPublishedCoursesAsync(isAuthenticated);
 
             if (!string.IsNullOrEmpty(search))
-            {
-                courses = courses.Where(c =>
-                    c.Title.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    (c.Tags != null && c.Tags.Contains(search, StringComparison.OrdinalIgnoreCase))
-                ).ToList();
-            }
+                courses = courses.Where(c => c.Title.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                                            (c.Tags != null && c.Tags.Contains(search, StringComparison.OrdinalIgnoreCase))).ToList();
 
             ViewBag.Search = search;
-
             if (isAuthenticated)
             {
-                var currentUser = await _userManager.GetUserAsync(User);
-                ViewBag.UserId = currentUser?.Id;
+                var user = await _userManager.GetUserAsync(User);
+                ViewBag.UserId = user?.Id;
             }
-
             return View(courses);
         }
 
-        // ============ MY COURSES ============
-
-        [Authorize]
         public async Task<IActionResult> MyCourses(string search = "")
         {
-            var currentUser = await _userManager.GetUserAsync(User);
-            var enrollments = await _enrollmentService.GetUserEnrollmentsAsync(currentUser.Id);
+            var user = await _userManager.GetUserAsync(User);
+            var enrollments = await _enrollmentService.GetUserEnrollmentsAsync(user.Id);
 
             if (!string.IsNullOrEmpty(search))
-            {
-                enrollments = enrollments.Where(e =>
-                    e.Course.Title.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    (e.Course.Tags != null && e.Course.Tags.Contains(search, StringComparison.OrdinalIgnoreCase))
-                ).ToList();
-            }
+                enrollments = enrollments.Where(e => e.Course.Title.Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
 
             ViewBag.Search = search;
-            ViewBag.User = currentUser;
-
+            ViewBag.User = user;
+            ViewBag.Badge = CalculateBadge(user.TotalPoints);
+            ViewBag.NextBadgePoints = user.TotalPoints < 20 ? 20 :
+                                      user.TotalPoints < 40 ? 40 :
+                                      user.TotalPoints < 60 ? 60 :
+                                      user.TotalPoints < 80 ? 80 :
+                                      user.TotalPoints < 100 ? 100 : 120;
             return View(enrollments);
         }
 
-        // ============ COURSE DETAIL ============
-
-        public async Task<IActionResult> CourseDetail(int id)
+        // B3 & B4: Course Detail with Tabs
+        [AllowAnonymous]
+        public async Task<IActionResult> CourseDetail(int id, string tab = "overview")
         {
             var course = await _courseService.GetCourseByIdAsync(id);
-            if (course == null)
+            if (course == null || (!course.IsPublished && !User.IsInRole("Admin") && !User.IsInRole("Instructor")))
                 return NotFound();
 
-            // Check visibility
-            if (!course.IsPublished)
-            {
-                if (!User.Identity.IsAuthenticated ||
-                    (!User.IsInRole("Admin") && !User.IsInRole("Instructor")))
-                {
-                    return NotFound();
-                }
-            }
-
-            // Increment view count
             await _courseService.IncrementViewCountAsync(id);
 
-            string? userId = null;
-            CourseEnrollment? enrollment = null;
-            List<LessonProgress>? progresses = null;
-
-            if (User.Identity?.IsAuthenticated ?? false)
-            {
-                var currentUser = await _userManager.GetUserAsync(User);
-                userId = currentUser?.Id;
-
-                if (userId != null)
-                {
-                    enrollment = await _enrollmentService.GetEnrollmentAsync(userId, id);
-                    if (enrollment != null)
-                    {
-                        progresses = await _progressService.GetCourseProgressAsync(userId, id);
-                    }
-                }
-            }
-
-            // Get reviews
+            string? userId = User.Identity?.IsAuthenticated == true ? (await _userManager.GetUserAsync(User))?.Id : null;
+            var enrollment = userId != null ? await _enrollmentService.GetEnrollmentAsync(userId, id) : null;
+            var progresses = enrollment != null ? await _progressService.GetCourseProgressAsync(userId, id) : new List<LessonProgress>();
             var reviews = await _reviewService.GetCourseReviewsAsync(id);
             var avgRating = await _reviewService.GetAverageRatingAsync(id);
 
@@ -132,258 +109,217 @@ namespace Learnova.Controllers
             ViewBag.Progresses = progresses;
             ViewBag.Reviews = reviews;
             ViewBag.AverageRating = avgRating;
+            ViewBag.ActiveTab = tab;
 
             return View(course);
         }
 
-        // ============ JOIN COURSE ============
-
-        [Authorize]
+        // Join / Buy Course
         [HttpPost]
         public async Task<IActionResult> JoinCourse(int courseId)
         {
-            var currentUser = await _userManager.GetUserAsync(User);
+            var user = await _userManager.GetUserAsync(User);
             var course = await _courseService.GetCourseByIdAsync(courseId);
+            if (course == null) return Json(new { success = false, message = "Course not found" });
 
-            if (course == null)
-                return Json(new { success = false, message = "Course not found" });
-
-            // Check if already enrolled
-            var existingEnrollment = await _enrollmentService.GetEnrollmentAsync(currentUser.Id, courseId);
-            if (existingEnrollment != null)
-                return Json(new { success = true, message = "Already enrolled" });
-
-            // Check access rules
-            if (course.AccessRule == "OnPayment" && course.Price > 0)
-            {
-                return Json(new
-                {
-                    success = false,
-                    requiresPayment = true,
-                    price = course.Price,
-                    message = "This is a paid course"
-                });
-            }
+            var existing = await _enrollmentService.GetEnrollmentAsync(user.Id, courseId);
+            if (existing != null) return Json(new { success = true, message = "Already enrolled" });
 
             if (course.AccessRule == "OnInvitation")
-            {
-                return Json(new
-                {
-                    success = false,
-                    message = "This course is invitation-only. Please contact the instructor."
-                });
-            }
+                return Json(new { success = false, message = "Invitation only course." });
 
-            // Enroll user
-            await _enrollmentService.EnrollUserAsync(currentUser.Id, courseId);
+            if (course.AccessRule == "OnPayment" && course.Price > 0)
+                return Json(new { success = false, requiresPayment = true, price = course.Price, message = "Payment required." });
 
-            return Json(new { success = true, message = "Successfully enrolled!" });
+            await _enrollmentService.EnrollUserAsync(user.Id, courseId);
+            return Json(new { success = true, message = "Enrolled successfully!" });
         }
 
-        // ============ LESSON PLAYER ============
-
-        [Authorize]
+        // B5: Full Screen Player
         public async Task<IActionResult> Player(int lessonId)
         {
             var lesson = await _lessonService.GetLessonByIdAsync(lessonId);
-            if (lesson == null)
-                return NotFound();
+            if (lesson == null) return NotFound();
 
-            var currentUser = await _userManager.GetUserAsync(User);
+            var user = await _userManager.GetUserAsync(User);
+            var enrollment = await _enrollmentService.GetEnrollmentAsync(user.Id, lesson.CourseId);
+            if (enrollment == null) return Forbid();
 
-            // Check enrollment
-            var enrollment = await _enrollmentService.GetEnrollmentAsync(currentUser.Id, lesson.CourseId);
-            if (enrollment == null)
-            {
-                TempData["Error"] = "Please enroll in this course first";
-                return RedirectToAction("CourseDetail", new { id = lesson.CourseId });
-            }
-
-            // Update start date if not set
             if (enrollment.StartDate == null)
             {
                 enrollment.StartDate = DateTime.UtcNow;
                 enrollment.Status = "In Progress";
-                await _enrollmentService.UpdateEnrollmentStatusAsync(currentUser.Id, lesson.CourseId);
+                await _enrollmentService.UpdateEnrollmentStatusAsync(user.Id, lesson.CourseId);
             }
 
             var course = await _courseService.GetCourseByIdAsync(lesson.CourseId);
             var lessons = await _lessonService.GetLessonsByCourseIdAsync(lesson.CourseId);
-            var progresses = await _progressService.GetCourseProgressAsync(currentUser.Id, lesson.CourseId);
+            var progresses = await _progressService.GetCourseProgressAsync(user.Id, lesson.CourseId);
 
             ViewBag.Course = course;
             ViewBag.Lessons = lessons;
             ViewBag.Progresses = progresses;
             ViewBag.Enrollment = enrollment;
-            ViewBag.CurrentUser = currentUser;
+            ViewBag.User = user;
 
             return View(lesson);
         }
 
-        // ============ COMPLETE LESSON ============
-
-        [Authorize]
         [HttpPost]
-        public async Task<IActionResult> CompleteLesson(int lessonId)
+        public async Task<IActionResult> MarkLessonComplete(int lessonId)
         {
-            var currentUser = await _userManager.GetUserAsync(User);
+            var user = await _userManager.GetUserAsync(User);
+            await _progressService.MarkLessonCompleteAsync(user.Id, lessonId);
             var lesson = await _lessonService.GetLessonByIdAsync(lessonId);
-
-            if (lesson == null)
-                return Json(new { success = false, message = "Lesson not found" });
-
-            await _progressService.MarkLessonCompleteAsync(currentUser.Id, lessonId);
-
-            var completion = await _progressService.CalculateCourseCompletionAsync(currentUser.Id, lesson.CourseId);
-
-            return Json(new
-            {
-                success = true,
-                completionPercentage = completion,
-                message = "Lesson completed!"
-            });
+            var completion = await _progressService.CalculateCourseCompletionAsync(user.Id, lesson.CourseId);
+            return Json(new { success = true, completion });
         }
 
-        // ============ REVIEWS ============
-
-        public async Task<IActionResult> GetReviews(int courseId)
-        {
-            var reviews = await _reviewService.GetCourseReviewsAsync(courseId);
-            var averageRating = await _reviewService.GetAverageRatingAsync(courseId);
-
-            var reviewsData = reviews.Select(r => new {
-                id = r.Id,
-                rating = r.Rating,
-                reviewText = r.ReviewText,
-                createdAt = r.CreatedAt.ToString("MMM dd, yyyy"),
-                user = new
-                {
-                    firstName = r.User.FirstName,
-                    lastName = r.User.LastName
-                }
-            });
-
-            return Json(new { reviews = reviewsData, averageRating });
-        }
-
-        [Authorize]
-        [HttpPost]
-        public async Task<IActionResult> AddReview(int courseId, int rating, string reviewText)
-        {
-            var currentUser = await _userManager.GetUserAsync(User);
-
-            // Check if user is enrolled
-            var enrollment = await _enrollmentService.GetEnrollmentAsync(currentUser.Id, courseId);
-            if (enrollment == null)
-                return Json(new { success = false, message = "You must be enrolled to review this course" });
-
-            // Check if already reviewed
-            var hasReviewed = await _reviewService.HasUserReviewedAsync(currentUser.Id, courseId);
-            if (hasReviewed)
-                return Json(new { success = false, message = "You have already reviewed this course" });
-
-            if (rating < 1 || rating > 5)
-                return Json(new { success = false, message = "Rating must be between 1 and 5" });
-
-            var review = new CourseReview
-            {
-                UserId = currentUser.Id,
-                CourseId = courseId,
-                Rating = rating,
-                ReviewText = reviewText,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            await _reviewService.AddReviewAsync(review);
-
-            return Json(new { success = true, message = "Review added successfully!" });
-        }
-
-        // ============ QUIZ ============
-
+        // B6: Quiz Flow
         [Authorize]
         public async Task<IActionResult> TakeQuiz(int quizId)
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null) return RedirectToAction("Login", "Account");
+
+            // Load quiz with questions and options
             var quiz = await _quizService.GetQuizWithQuestionsAsync(quizId);
             if (quiz == null)
-                return NotFound();
+            {
+                TempData["Error"] = "Quiz not found.";
+                return RedirectToAction("Courses");
+            }
 
-            var currentUser = await _userManager.GetUserAsync(User);
-            var attempts = await _quizService.GetUserAttemptsAsync(currentUser.Id, quizId);
+            // Check enrollment
+            var isEnrolled = await _enrollmentService.IsUserEnrolledAsync(userId, quiz.CourseId);
+            if (!isEnrolled)
+            {
+                TempData["Error"] = "You must be enrolled in this course to take the quiz.";
+                return RedirectToAction("CourseDetail", new { id = quiz.CourseId });
+            }
 
-            ViewBag.AttemptCount = attempts.Count;
-            ViewBag.BestScore = attempts.Any() ? attempts.Max(a => a.Score) : 0;
+            // Check questions exist
+            if (quiz.Questions == null || !quiz.Questions.Any())
+            {
+                TempData["Warning"] = "This quiz has no questions yet.";
+                return RedirectToAction("CourseDetail", new { id = quiz.CourseId });
+            }
+
+            // Get attempt count
+            var attemptCount = await _quizService.GetAttemptCountAsync(userId, quizId);
+
+            ViewBag.AttemptNumber = attemptCount + 1;
+            ViewBag.CourseId = quiz.CourseId;
 
             return View(quiz);
         }
 
-        [Authorize]
         [HttpPost]
-        public async Task<IActionResult> SubmitQuiz([FromBody] QuizSubmissionModel submission)
+        [Authorize]
+        public async Task<IActionResult> SubmitQuiz(int quizId, Dictionary<int, int> answers)
         {
-            var currentUser = await _userManager.GetUserAsync(User);
-            var quiz = await _quizService.GetQuizWithQuestionsAsync(submission.QuizId);
-
-            if (quiz == null)
-                return Json(new { success = false, message = "Quiz not found" });
-
-            // Calculate score
-            var answers = submission.Answers ?? new Dictionary<int, int>();
-            var score = await _quizService.CalculateScoreAsync(submission.QuizId, answers);
-            var isPassed = score >= 60;
-
-            // Get attempt number
-            var attemptCount = await _quizService.GetAttemptCountAsync(currentUser.Id, submission.QuizId);
-            var attemptNumber = attemptCount + 1;
-
-            // Calculate points
-            var pointsEarned = 0;
-            if (isPassed)
+            try
             {
-                pointsEarned = await _quizService.CalculatePointsAsync(submission.QuizId, attemptNumber);
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (userId == null)
+                    return Json(new { success = false, message = "Please login again." });
+
+                if (answers == null || !answers.Any())
+                    return Json(new { success = false, message = "No answers submitted." });
+
+                // Calculate score (percentage)
+                var score = await _quizService.CalculateScoreAsync(quizId, answers);
+
+                // Get attempt number
+                var attemptCount = await _quizService.GetAttemptCountAsync(userId, quizId);
+                var attemptNumber = attemptCount + 1;
+
+                // Determine if passed (70% threshold)
+                var passed = score >= 70;
+
+                // Calculate points based on attempt number (only if passed)
+                var pointsEarned = 0;
+                if (passed)
+                {
+                    pointsEarned = await _quizService.CalculatePointsAsync(quizId, attemptNumber);
+                }
+
+                // Record the attempt
+                var attempt = new QuizAttempt
+                {
+                    QuizId = quizId,
+                    UserId = userId,
+                    Score = score,
+                    IsPassed = passed,
+                    PointsEarned = pointsEarned,
+                    AttemptNumber = attemptNumber,
+                    AttemptDate = DateTime.UtcNow
+                };
+
+                await _quizService.RecordAttemptAsync(attempt);
+
+                // Award points if passed
+                if (passed && pointsEarned > 0)
+                {
+                    await _progressService.AddPointsToUserAsync(userId, pointsEarned);
+                }
+
+                // Get updated user info
+                var user = await _userManager.FindByIdAsync(userId);
+
+                return Json(new
+                {
+                    success = true,
+                    score = score,
+                    passed = passed,
+                    pointsEarned = pointsEarned,
+                    totalPoints = user?.TotalPoints ?? 0,
+                    badge = user?.BadgeLevel ?? "Beginner",
+                    attemptNumber = attemptNumber,
+                    message = passed ? "Quiz passed!" : "Quiz not passed. Try again!"
+                });
             }
-
-            // Record attempt
-            var attempt = new QuizAttempt
+            catch (Exception ex)
             {
-                UserId = currentUser.Id,
-                QuizId = submission.QuizId,
-                AttemptNumber = attemptNumber,
-                Score = score,
-                PointsEarned = pointsEarned,
-                IsPassed = isPassed,
-                AnswersJson = JsonSerializer.Serialize(answers),
-                AttemptDate = DateTime.UtcNow
-            };
-
-            await _quizService.RecordAttemptAsync(attempt);
-
-            // Add points to user if passed
-            if (isPassed)
-            {
-                await _progressService.AddPointsToUserAsync(currentUser.Id, pointsEarned);
+                Console.WriteLine($"SubmitQuiz Error: {ex.Message}");
+                return Json(new { success = false, message = "An error occurred. Please try again." });
             }
-
-            // Get updated user info
-            var updatedUser = await _userManager.FindByIdAsync(currentUser.Id);
-
-            return Json(new
-            {
-                success = true,
-                score,
-                isPassed,
-                pointsEarned,
-                attemptNumber,
-                totalPoints = updatedUser.TotalPoints,
-                badgeLevel = updatedUser.BadgeLevel
-            });
         }
-    }
+        // B7: Complete Course
+        [HttpPost]
+        public async Task<IActionResult> CompleteCourse(int courseId)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            var completion = await _progressService.CalculateCourseCompletionAsync(user.Id, courseId);
+            if (completion < 100) return Json(new { success = false, message = "Complete all lessons first." });
 
-    // Model for quiz submission
-    public class QuizSubmissionModel
-    {
-        public int QuizId { get; set; }
-        public Dictionary<int, int> Answers { get; set; }
+            await _enrollmentService.MarkCourseCompletedAsync(user.Id, courseId);
+            return Json(new { success = true, message = "Course completed successfully!" });
+        }
+
+        // Reviews
+        [HttpPost]
+        public async Task<IActionResult> AddReview(int courseId, int rating, string reviewText)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            var enrollment = await _enrollmentService.GetEnrollmentAsync(user.Id, courseId);
+            if (enrollment == null) return Json(new { success = false, message = "Must be enrolled." });
+
+            var exists = await _reviewService.HasUserReviewedAsync(user.Id, courseId);
+            if (exists) return Json(new { success = false, message = "Already reviewed." });
+
+            await _reviewService.AddReviewAsync(new CourseReview
+            {
+                UserId = user.Id,
+                CourseId = courseId,
+                Rating = rating,
+                ReviewText = reviewText,
+                CreatedAt = DateTime.UtcNow
+            });
+            return Json(new { success = true, message = "Review added!" });
+        }
+       
+    
+
     }
 }
