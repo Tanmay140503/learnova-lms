@@ -1,0 +1,418 @@
+@model Learnova.Models.ViewModels.CourseViewModel
+@{
+    ViewData["Title"] = "Edit Course - " + Model.Title;
+    var lessons = ViewBag.Lessons as List<Learnova.Models.Entities.Lesson> ?? new List<Learnova.Models.Entities.Lesson>();
+    var quizzes = ViewBag.Quizzes as List<Learnova.Models.Entities.Quiz> ?? new List<Learnova.Models.Entities.Quiz>();
+    var csrfToken = ViewBag.CsrfToken as string;
+}
+
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body py-3">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                        <div class="d-flex align-items-center">
+                            <a asp-action="Dashboard" class="btn btn-outline-secondary me-3">
+                                <i class="fas fa-arrow-left"></i>
+                            </a>
+                            <div>
+                                <h4 class="mb-0">@Model.Title</h4>
+                                <small class="text-muted">Course ID: @Model.Id</small>
+                            </div>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                            <!-- Publish Toggle -->
+                            <form asp-action="TogglePublish" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@Model.Id" />
+                                <div class="form-check form-switch me-3">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                           id="publishToggle" @(Model.IsPublished ? "checked" : "")
+                                           onchange="this.form.submit()">
+                                    <label class="form-check-label" for="publishToggle">
+                                        @if (Model.IsPublished)
+                                        {
+                                            <span class="text-success fw-bold">Published</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">Draft</span>
+                                        }
+                                    </label>
+                                </div>
+                            </form>
+
+                            <a href="@Url.Action("CourseDetail", "Learner", new { id = Model.Id })"
+                               target="_blank" class="btn btn-outline-info">
+                                <i class="fas fa-eye me-1"></i> Preview
+                            </a>
+                            <a asp-action="ContactAttendees" asp-route-courseId="@Model.Id" class="btn btn-outline-primary">
+                                <i class="fas fa-envelope me-1"></i> Contact
+                            </a>
+                            <a asp-action="AddAttendees" asp-route-courseId="@Model.Id" class="btn btn-outline-success">
+                                <i class="fas fa-user-plus me-1"></i> Add Attendees
+                            </a>
+                             
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <!-- Tabs -->
+                <div class="card-header bg-white">
+                    <ul class="nav nav-tabs card-header-tabs" id="courseTabs" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#details" type="button">
+                                <i class="fas fa-info-circle me-1"></i> Details
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#content" type="button">
+                                <i class="fas fa-book-open me-1"></i> Content
+                                <span class="badge bg-primary ms-1">@lessons.Count</span>
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#description" type="button">
+                                <i class="fas fa-align-left me-1"></i> Description
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#options" type="button">
+                                <i class="fas fa-cog me-1"></i> Options
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#quizzes" type="button">
+                                <i class="fas fa-question-circle me-1"></i> Quizzes
+                                <span class="badge bg-primary ms-1">@quizzes.Count</span>
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="card-body">
+                    <div class="tab-content">
+                        <!-- Details Tab -->
+                        <div class="tab-pane fade show active" id="details">
+                            <form asp-action="EditCourse" method="post" enctype="multipart/form-data">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" asp-for="Id" />
+
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <div class="mb-3">
+                                            <label asp-for="Title" class="form-label fw-bold">
+                                                Course Title <span class="text-danger">*</span>
+                                            </label>
+                                            <input asp-for="Title" class="form-control form-control-lg" />
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label asp-for="ShortDescription" class="form-label fw-bold">
+                                                Short Description
+                                            </label>
+                                            <textarea asp-for="ShortDescription" class="form-control" rows="3"></textarea>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label asp-for="Tags" class="form-label fw-bold">Tags</label>
+                                            <input asp-for="Tags" class="form-control"
+                                                   placeholder="e.g., Programming, Web Development" />
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <!-- Course Image -->
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Course Image</label>
+                                            <div class="border rounded p-3 text-center bg-light">
+                                                @if (!string.IsNullOrEmpty(Model.CourseImageUrl))
+                                                {
+                                                    <img src="@Model.CourseImageUrl" class="img-fluid rounded mb-2"
+                                                         style="max-height: 200px;" id="courseImagePreview" />
+                                                }
+                                                else
+                                                {
+                                                    <div class="py-4">
+                                                        <i class="fas fa-image fa-3x text-muted mb-2"></i>
+                                                        <p class="text-muted mb-0">No image uploaded</p>
+                                                    </div>
+                                                    <img src="" class="img-fluid rounded mb-2 d-none"
+                                                         id="courseImagePreview" style="max-height: 200px;" />
+                                                }
+                                                <input asp-for="CourseImage" class="form-control mt-2" type="file"
+                                                       accept="image/*" onchange="previewImage(this)" />
+                                            </div>
+                                        </div>
+
+                                        <!-- Stats Card -->
+                                        <div class="card bg-light">
+                                            <div class="card-body">
+                                                <h6 class="card-title"><i class="fas fa-chart-bar me-1"></i> Course Stats</h6>
+                                                <div class="row text-center">
+                                                    <div class="col-4">
+                                                        <h4 class="mb-0 text-primary">@Model.ViewsCount</h4>
+                                                        <small class="text-muted">Views</small>
+                                                    </div>
+                                                    <div class="col-4">
+                                                        <h4 class="mb-0 text-success">@Model.TotalLessons</h4>
+                                                        <small class="text-muted">Lessons</small>
+                                                    </div>
+                                                    <div class="col-4">
+                                                        <h4 class="mb-0 text-info">@Model.TotalDurationMinutes</h4>
+                                                        <small class="text-muted">Minutes</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <hr />
+                                <div class="d-flex justify-content-end">
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        <i class="fas fa-save me-2"></i> Save Changes
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Content Tab (Lessons) -->
+                        <div class="tab-pane fade" id="content">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h5 class="mb-0"><i class="fas fa-list-ul me-2"></i> Course Lessons</h5>
+                                <button class="btn btn-primary" onclick="openLessonModal(0, @Model.Id)">
+                                    <i class="fas fa-plus me-1"></i> Add Lesson
+                                </button>
+                            </div>
+                            <div id="lessonsContainer">
+                                @await Html.PartialAsync("_LessonsListPartial", lessons)
+                            </div>
+                        </div>
+
+                        <!-- Description Tab -->
+                        <div class="tab-pane fade" id="description">
+                            <form asp-action="EditCourse" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" asp-for="Id" />
+                                <input type="hidden" asp-for="Title" />
+
+                                <div class="mb-3">
+                                    <label asp-for="Description" class="form-label fw-bold">
+                                        <i class="fas fa-align-left me-1"></i> Full Course Description
+                                    </label>
+                                    <textarea asp-for="Description" class="form-control" rows="15"></textarea>
+                                </div>
+                                <div class="d-flex justify-content-end">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i> Save Description
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Options Tab -->
+                        <div class="tab-pane fade" id="options">
+                            <form asp-action="EditCourse" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" asp-for="Id" />
+                                <input type="hidden" asp-for="Title" />
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="card mb-4">
+                                            <div class="card-header">
+                                                <h6 class="mb-0"><i class="fas fa-eye me-1"></i> Visibility Settings</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="mb-3">
+                                                    <label asp-for="Visibility" class="form-label fw-bold">
+                                                        Who can see this course?
+                                                    </label>
+                                                    <select asp-for="Visibility" class="form-select">
+                                                        <option value="Everyone">Everyone (Public)</option>
+                                                        <option value="SignedIn">Signed In Users Only</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <div class="card mb-4">
+                                            <div class="card-header">
+                                                <h6 class="mb-0"><i class="fas fa-lock me-1"></i> Access Settings</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="mb-3">
+                                                    <label asp-for="AccessRule" class="form-label fw-bold">
+                                                        Who can start learning?
+                                                    </label>
+                                                    <select asp-for="AccessRule" class="form-select"
+                                                            onchange="togglePriceField(this.value)">
+                                                        <option value="Open">Open (Anyone can enroll)</option>
+                                                        <option value="OnInvitation">On Invitation Only</option>
+                                                        <option value="OnPayment">On Payment (Paid Course)</option>
+                                                    </select>
+                                                </div>
+
+                                                <div class="mb-3" id="priceField"
+                                                     style="display: @(Model.AccessRule == "OnPayment" ? "block" : "none")">
+                                                    <label asp-for="Price" class="form-label fw-bold">Course Price</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text">$</span>
+                                                        <input asp-for="Price" class="form-control" type="number"
+                                                               step="0.01" min="0" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-end">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i> Save Options
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Quizzes Tab -->
+                        <div class="tab-pane fade" id="quizzes">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h5 class="mb-0"><i class="fas fa-question-circle me-2"></i> Course Quizzes</h5>
+                                <a asp-action="QuizBuilder" asp-route-courseId="@Model.Id" class="btn btn-primary">
+                                    <i class="fas fa-plus me-1"></i> Create Quiz
+                                </a>
+                            </div>
+                            <div id="quizzesContainer">
+                                @await Html.PartialAsync("_QuizzesListPartial", quizzes)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lesson Modal Container -->
+<div id="lessonModalContainer"></div>
+
+@section Scripts {
+    <script>
+        const CSRF_TOKEN = '@csrfToken';
+
+        // Image Preview
+        function previewImage(input) {
+            var preview = document.getElementById('courseImagePreview');
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.classList.remove('d-none');
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        // Toggle Price Field
+        function togglePriceField(value) {
+            document.getElementById('priceField').style.display = value === 'OnPayment' ? 'block' : 'none';
+        }
+
+        // Open Lesson Modal
+        function openLessonModal(lessonId, courseId) {
+            $.get('@Url.Action("LessonModal", "Instructor")', { id: lessonId, courseId: courseId })
+                .done(function(data) {
+                    $('#lessonModalContainer').html(data);
+                    new bootstrap.Modal(document.getElementById('lessonModal')).show();
+                });
+        }
+
+        // Save Lesson
+        function saveLesson() {
+            var form = document.getElementById('lessonForm');
+            var formData = new FormData(form);
+            formData.append('__RequestVerificationToken', CSRF_TOKEN);
+
+            var btn = event.target;
+            var originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Saving...';
+            btn.disabled = true;
+
+            $.ajax({
+                url: '@Url.Action("SaveLesson", "Instructor")',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    if (response.success) {
+                        bootstrap.Modal.getInstance(document.getElementById('lessonModal')).hide();
+                        loadLessons();
+                        alert('✅ Lesson saved successfully!');
+                    } else {
+                        alert('❌ Error: ' + response.message);
+                    }
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                },
+                error: function() {
+                    alert('❌ An error occurred');
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            });
+        }
+
+        // Load Lessons
+        function loadLessons() {
+            $.get('@Url.Action("GetLessons", "Instructor")', { courseId: @Model.Id })
+                .done(function(data) {
+                    $('#lessonsContainer').html(data);
+                });
+        }
+
+        // Delete Lesson
+        function deleteLesson(lessonId) {
+            if (!confirm('Are you sure you want to delete this lesson?')) return;
+
+            $.post('@Url.Action("DeleteLesson", "Instructor")', {
+                id: lessonId,
+                __RequestVerificationToken: CSRF_TOKEN
+            })
+                .done(function(response) {
+                    if (response.success) {
+                        loadLessons();
+                        alert('✅ Lesson deleted successfully!');
+                    }
+                });
+        }
+
+        // Delete Quiz
+        function deleteQuiz(quizId) {
+            if (!confirm('Are you sure you want to delete this quiz?')) return;
+
+            $.post('@Url.Action("DeleteQuiz", "Instructor")', {
+                id: quizId,
+                __RequestVerificationToken: CSRF_TOKEN
+            })
+                .done(function(response) {
+                    if (response.success) {
+                        location.reload();
+                    }
+                });
+        }
+    </script>
+}
