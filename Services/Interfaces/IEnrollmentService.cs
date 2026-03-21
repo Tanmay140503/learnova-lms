@@ -1,4 +1,4 @@
-﻿using Learnova.Models.Entities;
+using Learnova.Models.Entities;
 
 namespace Learnova.Services.Interfaces
 {
@@ -11,5 +11,8 @@ namespace Learnova.Services.Interfaces
         Task<bool> IsUserEnrolledAsync(string userId, int courseId);
         Task<bool> CanUserAccessCourseAsync(string userId, int courseId);
         Task UpdateEnrollmentStatusAsync(string userId, int courseId);
+
+        Task MarkCourseCompletedAsync(string userId, int courseId);
+
     }
 }
