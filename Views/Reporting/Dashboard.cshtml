@@ -1,0 +1,218 @@
+@model List<Learnova.Models.Entities.CourseEnrollment>
+@{
+    ViewData["Title"] = "Reporting Dashboard";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="fas fa-chart-bar"></i> Reporting Dashboard</h2>
+            <p class="text-muted">Track learner progress and course performance</p>
+        </div>
+        <a asp-action="ExportToCsv" asp-route-courseId="@ViewBag.SelectedCourseId" class="btn btn-success">
+            <i class="fas fa-download"></i> Export to CSV
+        </a>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form asp-action="Dashboard" method="get" class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Filter by Course</label>
+                    <select name="courseId" class="form-select" onchange="this.form.submit()">
+                        <option value="">All Courses</option>
+                        @foreach (var course in ViewBag.Courses as List<Learnova.Models.Entities.Course>)
+                        {
+                            <option value="@course.Id" selected="@(ViewBag.SelectedCourseId == course.Id)">
+                                @course.Title
+                            </option>
+                        }
+                    </select>
+
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4 g-3">
+        <div class="col-md-3">
+            <div class="card stat-card h-100 @(string.IsNullOrEmpty(ViewBag.SelectedStatus) ? "border-primary" : "")" 
+                 onclick="filterByStatus('')" style="cursor: pointer;">
+                <div class="card-body text-center">
+                    <div class="display-4 text-primary mb-2">@ViewBag.TotalParticipants</div>
+                    <h6 class="text-muted mb-0">Total Participants</h6>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card h-100 @(ViewBag.SelectedStatus == "Yet to Start" ? "border-warning" : "")" 
+                 onclick="filterByStatus('Yet to Start')" style="cursor: pointer;">
+                <div class="card-body text-center">
+                    <div class="display-4 text-warning mb-2">@ViewBag.YetToStart</div>
+                    <h6 class="text-muted mb-0">Yet to Start</h6>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card h-100 @(ViewBag.SelectedStatus == "In Progress" ? "border-info" : "")" 
+                 onclick="filterByStatus('In Progress')" style="cursor: pointer;">
+                <div class="card-body text-center">
+                    <div class="display-4 text-info mb-2">@ViewBag.InProgress</div>
+                    <h6 class="text-muted mb-0">In Progress</h6>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card h-100 @(ViewBag.SelectedStatus == "Completed" ? "border-success" : "")" 
+                 onclick="filterByStatus('Completed')" style="cursor: pointer;">
+                <div class="card-body text-center">
+                    <div class="display-4 text-success mb-2">@ViewBag.Completed</div>
+                    <h6 class="text-muted mb-0">Completed</h6>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="card">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">Learner Progress Details</h5>
+        </div>
+        <div class="card-body p-0">
+            @if (!Model.Any())
+            {
+                <div class="text-center p-5 text-muted">
+                    <i class="fas fa-inbox fa-3x mb-3"></i>
+                    <p>No enrollment data available</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Sr No.</th>
+                                <th>Course Name</th>
+                                <th>Participant Name</th>
+                                <th>Enrolled Date</th>
+                                <th>Start Date</th>
+                                <th>Time Spent</th>
+                                <th>Completion %</th>
+                                <th>Completed Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (int i = 0; i < Model.Count; i++)
+                            {
+                                var enrollment = Model[i];
+                                <tr>
+                                    <td>@(i + 1)</td>
+                                    <td>
+                                        <strong>@enrollment.Course.Title</strong>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-user-circle fa-2x text-muted me-2"></i>
+                                            <div>
+                                                <div>@enrollment.User.FirstName @enrollment.User.LastName</div>
+                                                <small class="text-muted">@enrollment.User.Email</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>@enrollment.EnrolledDate.ToString("MMM dd, yyyy")</td>
+                                    <td>
+                                        @if (enrollment.StartDate.HasValue)
+                                        {
+                                            @enrollment.StartDate.Value.ToString("MMM dd, yyyy")
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td>@enrollment.TimeSpentMinutes mins</td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="progress flex-grow-1 me-2" style="height: 8px; min-width: 80px;">
+                                                <div class="progress-bar @(enrollment.CompletionPercentage >= 100 ? "bg-success" : 
+                                                                          enrollment.CompletionPercentage >= 50 ? "bg-info" : "bg-warning")" 
+                                                     style="width: @enrollment.CompletionPercentage%"></div>
+                                            </div>
+                                            <small class="text-muted">@enrollment.CompletionPercentage.ToString("F0")%</small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        @if (enrollment.CompletedDate.HasValue)
+                                        {
+                                            @enrollment.CompletedDate.Value.ToString("MMM dd, yyyy")
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (enrollment.Status == "Completed")
+                                        {
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check-circle"></i> @enrollment.Status
+                                            </span>
+                                        }
+                                        else if (enrollment.Status == "In Progress")
+                                        {
+                                            <span class="badge bg-info">
+                                                <i class="fas fa-spinner"></i> @enrollment.Status
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-warning">
+                                                <i class="fas fa-clock"></i> @enrollment.Status
+                                            </span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function filterByStatus(status) {
+            var courseId = '@ViewBag.SelectedCourseId';
+            var url = '@Url.Action("Dashboard", "Reporting")' + '?status=' + encodeURIComponent(status);
+            if (courseId) {
+                url += '&courseId=' + courseId;
+            }
+            window.location.href = url;
+        }
+    </script>
+}
+
+<style>
+    .stat-card {
+        transition: all 0.3s ease;
+        border-width: 2px;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    }
+
+    .stat-card.border-primary,
+    .stat-card.border-warning,
+    .stat-card.border-info,
+    .stat-card.border-success {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+</style>
