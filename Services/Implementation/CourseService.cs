@@ -1,4 +1,4 @@
-﻿using Learnova.Data;
+using Learnova.Data;
 using Learnova.Models.Entities;
 using Learnova.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -43,7 +43,7 @@ namespace Learnova.Services.Implementation
             return await _context.Courses
                 .Include(c => c.ResponsibleUser)
                 .Include(c => c.Lessons)
-                    .ThenInclude(l => l.Attachments)
+                    .ThenInclude(l => l.LessonAttachments)
                 .Include(c => c.Quizzes)
                     .ThenInclude(q => q.Questions)
                         .ThenInclude(qq => qq.Options)
