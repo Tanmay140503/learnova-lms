@@ -1,0 +1,438 @@
+@model Learnova.Models.ViewModels.QuizViewModel
+@{
+    ViewData["Title"] = Model.Id > 0 ? "Edit Quiz" : "Create Quiz";
+    var csrfToken = ViewBag.CsrfToken as string;
+}
+
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">
+                <i class="fas fa-question-circle text-primary me-2"></i> Quiz Builder
+            </h2>
+            <p class="text-muted mb-0">Create engaging quizzes for your course</p>
+        </div>
+        <div>
+            <button class="btn btn-success btn-lg" onclick="saveQuiz()">
+                <i class="fas fa-save me-2"></i> Save Quiz
+            </button>
+            <a asp-action="EditCourse" asp-route-id="@Model.CourseId" class="btn btn-secondary btn-lg ms-2">
+                <i class="fas fa-arrow-left me-1"></i> Back to Course
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Left Panel - Questions List -->
+        <div class="col-md-3">
+            <div class="card shadow-sm sticky-top" style="top: 20px;">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0"><i class="fas fa-list me-2"></i> Questions</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div id="questionsList" class="list-group list-group-flush">
+                        <!-- Questions will be rendered here -->
+                    </div>
+                </div>
+                <div class="card-footer p-2">
+                    <button class="btn btn-outline-primary w-100" onclick="addQuestion()">
+                        <i class="fas fa-plus me-1"></i> Add Question
+                    </button>
+                </div>
+            </div>
+
+            <!-- Rewards Card -->
+            <div class="card shadow-sm mt-3">
+                <div class="card-header bg-warning">
+                    <h6 class="mb-0"><i class="fas fa-trophy me-2"></i> Point Rewards</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <label class="form-label small">1st Attempt Points</label>
+                        <input type="number" class="form-control form-control-sm" id="firstAttemptPoints"
+                               value="@Model.FirstAttemptPoints" min="0" max="100" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">2nd Attempt Points</label>
+                        <input type="number" class="form-control form-control-sm" id="secondAttemptPoints"
+                               value="@Model.SecondAttemptPoints" min="0" max="100" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">3rd Attempt Points</label>
+                        <input type="number" class="form-control form-control-sm" id="thirdAttemptPoints"
+                               value="@Model.ThirdAttemptPoints" min="0" max="100" />
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label small">4th+ Attempt Points</label>
+                        <input type="number" class="form-control form-control-sm" id="fourthAttemptPoints"
+                               value="@Model.FourthAttemptPoints" min="0" max="100" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel - Question Editor -->
+        <div class="col-md-9">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <input type="text" class="form-control form-control-lg border-0 fw-bold"
+                                   id="quizTitle" value="@Model.Title" placeholder="Enter Quiz Title" />
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="questionEditor">
+                        <!-- Question editor will be rendered here -->
+                        <div class="text-center py-5 text-muted" id="emptyState">
+                            <i class="fas fa-question-circle fa-4x mb-3 opacity-50"></i>
+                            <h5>No Questions Yet</h5>
+                            <p>Click "Add Question" to create your first question</p>
+                            <button class="btn btn-primary" onclick="addQuestion()">
+                                <i class="fas fa-plus me-1"></i> Add Your First Question
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const CSRF_TOKEN = '@csrfToken';
+
+        // Initialize questions array
+                let questions = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                    Model.Questions ?? new List<Learnova.Models.ViewModels.QuizQuestionViewModel>(),
+                    new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }
+            ));
+    let currentQuestionIndex = -1;
+
+        // On page load
+        $(document).ready(function() {
+            if (questions.length > 0) {
+                currentQuestionIndex = 0;
+                renderQuestionsList();
+                renderQuestionEditor();
+            } else {
+                renderQuestionsList();
+            }
+        });
+
+        // Render questions list
+        function renderQuestionsList() {
+            var html = '';
+
+            if (questions.length === 0) {
+                html = '<div class="p-3 text-center text-muted"><small>No questions added</small></div>';
+            } else {
+                for (var i = 0; i < questions.length; i++) {
+                    var isActive = i === currentQuestionIndex;
+                            // renderQuestionsList function ke andar ye line dhoondho:
+        var hasCorrect = questions[i].options && questions[i].options.some(o => o.isCorrect);
+
+        // Ise is tarah update kar do (safe access):
+        var optionsArray = questions[i].options || [];
+        var hasCorrect = optionsArray.some(o => o.isCorrect);
+
+                    html += `
+                        <button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center ${isActive ? 'active' : ''}"
+                                onclick="selectQuestion(${i})">
+                            <span>
+                                <i class="fas fa-grip-vertical me-2 text-muted"></i>
+                                Q${i + 1}
+                            </span>
+                            ${!hasCorrect ? '<i class="fas fa-exclamation-triangle text-warning" title="No correct answer set"></i>' : ''}
+                        </button>
+                    `;
+                }
+            }
+
+            $('#questionsList').html(html);
+            $('#emptyState').toggle(questions.length === 0);
+        }
+
+        // Add new question
+        function addQuestion() {
+            saveCurrentQuestion();
+            questions.push({
+                id: 0,
+                questionText: '',
+                quizId: @Model.Id,
+                options: [
+                    { id: 0, optionText: '', isCorrect: false },
+                    { id: 0, optionText: '', isCorrect: false },
+                    { id: 0, optionText: '', isCorrect: false },
+                    { id: 0, optionText: '', isCorrect: false }
+                ]
+            });
+
+            currentQuestionIndex = questions.length - 1;
+            renderQuestionsList();
+            renderQuestionEditor();
+        }
+
+        // Select question
+        function selectQuestion(index) {
+            saveCurrentQuestion();
+            currentQuestionIndex = index;
+            renderQuestionsList();
+            renderQuestionEditor();
+        }
+
+        // Save current question data
+        function saveCurrentQuestion() {
+            if (currentQuestionIndex < 0 || currentQuestionIndex >= questions.length) return;
+
+            var questionText = $('#questionText').val();
+            if (questionText !== undefined) {
+                questions[currentQuestionIndex].questionText = questionText;
+            }
+
+            // Save options
+            $('.option-text').each(function(index) {
+                if (questions[currentQuestionIndex].options[index]) {
+                    questions[currentQuestionIndex].options[index].optionText = $(this).val();
+                }
+            });
+        }
+
+        // Render question editor
+        function renderQuestionEditor() {
+            if (currentQuestionIndex < 0 || questions.length === 0) {
+                $('#questionEditor').html(`
+                    <div class="text-center py-5 text-muted" id="emptyState">
+                        <i class="fas fa-question-circle fa-4x mb-3 opacity-50"></i>
+                        <h5>No Questions Yet</h5>
+                        <p>Click "Add Question" to create your first question</p>
+                        <button class="btn btn-primary" onclick="addQuestion()">
+                            <i class="fas fa-plus me-1"></i> Add Your First Question
+                        </button>
+                    </div>
+                `);
+                return;
+            }
+
+                    var q = questions[currentQuestionIndex];
+
+        var html = `
+            <div class="mb-4">
+                <div class="mb-4">
+                    <label class="form-label fw-bold">
+                        <i class="fas fa-question me-1"></i> Question ${currentQuestionIndex + 1}
+                    </label>
+                    <textarea class="form-control form-control-lg" id="questionText" rows="3"
+                              placeholder="Enter your question here...">${q.questionText || ''}</textarea>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-bold">
+                        <i class="fas fa-list-ul me-1"></i> Answer Options
+                    </label>
+                    <p class="text-muted small">Click the radio button to mark the correct answer</p>
+
+                    <div id="optionsList">
+            `;
+
+            for (var i = 0; i < q.options.length; i++) {
+                var opt = q.options[i];
+                html += `
+                    <div class="input-group mb-2">
+                        <div class="input-group-text bg-white">
+                            <input class="form-check-input mt-0" type="radio" name="correctOption"
+                                   ${opt.isCorrect ? 'checked' : ''}
+                                   onchange="setCorrectOption(${i})">
+                        </div>
+                        <input type="text" class="form-control option-text"
+                               value="${opt.optionText || ''}"
+                               placeholder="Option ${i + 1}"
+                               onchange="updateOptionText(${i}, this.value)">
+                        <button class="btn btn-outline-danger" type="button" onclick="deleteOption(${i})"
+                                ${q.options.length <= 2 ? 'disabled' : ''}>
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+            }
+
+            html += `
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm mt-2" onclick="addOption()">
+                        <i class="fas fa-plus me-1"></i> Add Option
+                    </button>
+                </div>
+
+                <hr>
+
+                <div class="d-flex justify-content-between">
+                    <button class="btn btn-danger" onclick="deleteCurrentQuestion()">
+                        <i class="fas fa-trash me-1"></i> Delete Question
+                    </button>
+                    <div>
+                        <button class="btn btn-outline-secondary me-2" onclick="duplicateQuestion()">
+                            <i class="fas fa-copy me-1"></i> Duplicate
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            $('#questionEditor').html(html);
+        }
+
+        // Update option text
+        function updateOptionText(index, value) {
+            questions[currentQuestionIndex].options[index].optionText = value;
+        }
+
+        // Set correct option
+        function setCorrectOption(index) {
+            for (var i = 0; i < questions[currentQuestionIndex].options.length; i++) {
+                questions[currentQuestionIndex].options[i].isCorrect = (i === index);
+            }
+            renderQuestionsList();
+        }
+
+        // Add option
+        function addOption() {
+            questions[currentQuestionIndex].options.push({
+                id: 0,
+                optionText: '',
+                isCorrect: false,
+                questionId: 0
+            });
+            renderQuestionEditor();
+        }
+
+        // Delete option
+        function deleteOption(index) {
+            if (questions[currentQuestionIndex].options.length <= 2) {
+                alert('Minimum 2 options required');
+                return;
+            }
+            questions[currentQuestionIndex].options.splice(index, 1);
+            renderQuestionEditor();
+        }
+
+        // Delete current question
+        function deleteCurrentQuestion() {
+            if (!confirm('Are you sure you want to delete this question?')) return;
+
+            questions.splice(currentQuestionIndex, 1);
+
+            if (questions.length === 0) {
+                currentQuestionIndex = -1;
+            } else if (currentQuestionIndex >= questions.length) {
+                currentQuestionIndex = questions.length - 1;
+            }
+
+            renderQuestionsList();
+            renderQuestionEditor();
+        }
+
+        // Duplicate question
+        function duplicateQuestion() {
+            var original = questions[currentQuestionIndex];
+            var duplicate = JSON.parse(JSON.stringify(original));
+            duplicate.id = 0;
+            duplicate.options.forEach(function(opt) { opt.id = 0; });
+
+            questions.splice(currentQuestionIndex + 1, 0, duplicate);
+            currentQuestionIndex = currentQuestionIndex + 1;
+
+            renderQuestionsList();
+            renderQuestionEditor();
+        }
+
+        // Save quiz
+        function saveQuiz() {
+            saveCurrentQuestion();
+
+            var title = $('#quizTitle').val().trim();
+            if (!title) {
+                alert('⚠️ Please enter a quiz title');
+                $('#quizTitle').focus();
+                return;
+            }
+
+            if (questions.length === 0) {
+                alert('⚠️ Please add at least one question');
+                return;
+            }
+
+            // Validate all questions
+            for (var i = 0; i < questions.length; i++) {
+                if (!questions[i].questionText || questions[i].questionText.trim() === '') {
+                    alert('⚠️ Question ' + (i + 1) + ' has no text');
+                    selectQuestion(i);
+                    return;
+                }
+
+                var hasCorrect = questions[i].options.some(o => o.isCorrect);
+                if (!hasCorrect) {
+                    alert('⚠️ Question ' + (i + 1) + ' has no correct answer selected');
+                    selectQuestion(i);
+                    return;
+                }
+            }
+
+            var data = {
+                id: @Model.Id,
+                courseId: @Model.CourseId,
+                title: title,
+                description: '',
+                firstAttemptPoints: parseInt($('#firstAttemptPoints').val()) || 10,
+                secondAttemptPoints: parseInt($('#secondAttemptPoints').val()) || 7,
+                thirdAttemptPoints: parseInt($('#thirdAttemptPoints').val()) || 5,
+                fourthAttemptPoints: parseInt($('#fourthAttemptPoints').val()) || 3,
+                questions: questions
+            };
+
+            // Show loading
+            var btn = event.target;
+            var originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Saving...';
+            btn.disabled = true;
+
+            $.ajax({
+                url: '@Url.Action("SaveQuiz", "Instructor")',
+                type: 'POST',
+                contentType: 'application/json',
+                headers: {
+                    'RequestVerificationToken': CSRF_TOKEN
+                },
+                data: JSON.stringify(data),
+                success: function(response) {
+                    if (response.success) {
+                        alert('✅ Quiz saved successfully!');
+                        window.location.href = '@Url.Action("EditCourse", "Instructor")/' + @Model.CourseId + '#quizzes';
+                    } else {
+                        alert('❌ Error: ' + response.message);
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                    }
+                },
+                error: function(xhr, status, error) {
+                    alert('❌ An error occurred: ' + error);
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            });
+        }
+    </script>
+}
+
+<style>
+    #questionsList .list-group-item.active {
+        background-color: var(--bs-primary);
+        border-color: var(--bs-primary);
+    }
+
+    input[type="radio"]:checked {
+        background-color: var(--bs-success);
+        border-color: var(--bs-success);
+    }
+</style>
