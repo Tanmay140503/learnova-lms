@@ -1,153 +1,125 @@
-@model List<Learnova.Models.Entities.CourseEnrollment>
+@model List<CourseEnrollment>
+@using Learnova.Models.Entities
 @{
-    ViewData["Title"] = "My Courses";
-    var user = ViewBag.User as Learnova.Models.Entities.ApplicationUser;
+    ViewData["Title"] = "My Learning";
+    var user = ViewBag.User as ApplicationUser;
+    var badge = ViewBag.Badge as string ?? "Beginner";
+    var nextPoints = ViewBag.NextBadgePoints != null ? (int)ViewBag.NextBadgePoints : 20;
+    var userPoints = user?.TotalPoints ?? 0;
+    var progressToNext = nextPoints > 0 ? Math.Min(100, (userPoints * 100) / nextPoints) : 0;
 }
 
-<div class="row">
-    <!-- Sidebar - Profile Panel -->
-    <div class="col-md-3">
-        <div class="card shadow-sm">
-            <div class="card-body text-center">
-                <div class="mb-3">
-                    <i class="fas fa-user-circle fa-5x text-primary"></i>
-                </div>
-                <h5>@user.FirstName @user.LastName</h5>
-                <p class="text-muted">@user.Email</p>
+<div class="container py-4">
+    <div class="row g-4">
+        <!-- Profile Panel -->
+        <div class="col-lg-3">
+            <div class="card shadow-sm border-0 sticky-top" style="top: 20px;">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-user-circle fa-4x text-primary"></i>
+                    </div>
+                    <h5 class="fw-bold">@user?.FirstName @user?.LastName</h5>
+                    <p class="text-muted mb-3">@user?.Email</p>
 
-                <hr />
+                    <div class="bg-light rounded p-3 mb-3">
+                        <h6 class="fw-bold mb-1">Total Points</h6>
+                        <h3 class="text-warning mb-2"><i class="fas fa-star"></i> @userPoints</h3>
+                        <span class="badge bg-primary fs-6">@badge</span>
+                    </div>
 
-                <div class="mb-3">
-                    <h6 class="text-muted">Total Points</h6>
-                    <h3 class="text-primary">@user.TotalPoints</h3>
-                </div>
-
-                <div class="mb-3">
-                    <h6 class="text-muted">Badge Level</h6>
-                    <span class="badge bg-warning fs-5">
-                        <i class="fas fa-award"></i> @user.BadgeLevel
-                    </span>
-                </div>
-
-                <div class="progress-badges">
-                    <small class="text-muted">Badge Progression</small>
-                    <div class="mt-2">
-                        @{
-                            var badges = new[] {
-                                                ("Newbie", 20), ("Explorer", 40), ("Achiever", 60),
-                                                ("Specialist", 80), ("Expert", 100), ("Master", 120)
-                                                };
-                            foreach (var (badge, points) in badges)
-                            {
-                                var achieved = user.TotalPoints >= points;
-                                <div class="badge-item @(achieved ? "text-success" : "text-muted")">
-                                    <i class="fas @(achieved ? "fa-check-circle" : "fa-circle")"></i>
-                                    @badge (@points pts)
-                                </div>
-                            }
-                        }
+                    <div class="text-start">
+                        <small class="text-muted">Progress to @(badge == "Master" ? "Max Level" : "Next Rank")</small>
+                        <div class="progress mt-1" style="height: 8px;">
+                            <div class="progress-bar bg-warning" style="width: @progressToNext%"></div>
+                        </div>
+                        <small class="text-muted">@userPoints / @nextPoints pts</small>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Main Content - Courses -->
-    <div class="col-md-9">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2><i class="fas fa-book-reader"></i> My Learning</h2>
-            <a asp-action="Courses" class="btn btn-primary">
-                <i class="fas fa-plus"></i> Browse More Courses
-            </a>
-        </div>
-
-        <!-- Search -->
-        <form asp-action="MyCourses" method="get" class="mb-4">
-            <div class="input-group">
-                <input type="text" name="search" class="form-control" placeholder="Search my courses..." value="@ViewBag.Search" />
-                <button class="btn btn-outline-primary" type="submit">
-                    <i class="fas fa-search"></i>
-                </button>
+        <!-- Courses Grid -->
+        <div class="col-lg-9">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="fw-bold">My Courses</h2>
+                <form method="get" class="d-flex gap-2">
+                    <input type="text" name="search" class="form-control" placeholder="Search courses..." value="@ViewBag.Search" />
+                    <button class="btn btn-primary"><i class="fas fa-search"></i></button>
+                </form>
             </div>
-        </form>
 
-        @if (!Model.Any())
-        {
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle"></i>
-                You haven't enrolled in any courses yet.
-                <a asp-action="Courses" class="alert-link">Browse courses</a>
-            </div>
-        }
-        else
-        {
-            <div class="row row-cols-1 row-cols-md-2 g-4">
-                @foreach (var enrollment in Model)
-                {
-                    var course = enrollment.Course;
-                    <div class="col">
-                        <div class="card h-100 shadow-sm">
-                            @if (!string.IsNullOrEmpty(course.CourseImageUrl))
-                            {
-                                <img src="@course.CourseImageUrl" class="card-img-top" alt="@course.Title" style="height: 180px; object-fit: cover;" />
-                            }
-                            else
-                            {
-                                <div class="bg-light" style="height: 180px; display: flex; align-items: center; justify-content: center;">
-                                    <i class="fas fa-book fa-4x text-muted"></i>
-                                </div>
-                            }
-                            <div class="card-body">
-                                <h5 class="card-title">@course.Title</h5>
-                                <p class="card-text text-muted">@course.ShortDescription</p>
+            @if (Model == null || !Model.Any())
+            {
+                <div class="text-center py-5 text-muted">
+                    <i class="fas fa-book-open fa-3x mb-3"></i>
+                    <p>No courses enrolled yet. <a asp-action="Courses">Browse courses</a></p>
+                </div>
+            }
+            else
+            {
+                <div class="row g-4">
+                    @foreach (var enrollment in Model)
+                    {
+                        var course = enrollment.Course;
+                        if (course == null) continue;
 
-                                <!-- Progress Bar -->
-                                <div class="mb-2">
-                                    <div class="d-flex justify-content-between">
-                                        <small>Progress</small>
-                                        <small>@enrollment.CompletionPercentage.ToString("F0")%</small>
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card h-100 shadow-sm border-0">
+                                <img src="@(course.CourseImageUrl ?? "/img/placeholder.jpg")" class="card-img-top" style="height:160px;object-fit:cover;" alt="@course.Title" />
+                                <div class="card-body d-flex flex-column">
+                                    <h5 class="fw-bold">@course.Title</h5>
+                                    <p class="text-muted small flex-grow-1">
+                                        @if (!string.IsNullOrEmpty(course.ShortDescription))
+                                        {
+                                            @(course.ShortDescription.Length > 80 ? course.ShortDescription.Substring(0, 80) + "..." : course.ShortDescription)
+                                        }
+                                    </p>
+                                    <div class="mb-2">
+                                        @if (!string.IsNullOrEmpty(course.Tags))
+                                        {
+                                            foreach (var tag in course.Tags.Split(',').Take(2))
+                                            {
+                                                <span class="badge bg-light text-dark me-1">@tag.Trim()</span>
+                                            }
+                                        }
                                     </div>
-                                    <div class="progress">
-                                        <div class="progress-bar" role="progressbar"
-                                             style="width: @enrollment.CompletionPercentage%"
-                                             aria-valuenow="@enrollment.CompletionPercentage"
-                                             aria-valuemin="0" aria-valuemax="100">
-                                        </div>
+                                    <div class="mb-2">
+                                        <small class="text-muted">Progress: @enrollment.CompletionPercentage%</small>
                                     </div>
-                                </div>
+                                    <div class="progress mb-3" style="height:6px;">
+                                        <div class="progress-bar bg-success" style="width:@enrollment.CompletionPercentage%"></div>
+                                    </div>
 
-                                <div class="small text-muted">
-                                    <span class="badge bg-info">@enrollment.Status</span>
-                                    @if (enrollment.StartDate.HasValue)
+                                    @if (enrollment.Status == "Completed")
                                     {
-                                        <div class="mt-1">Started: @enrollment.StartDate.Value.ToString("MMM dd, yyyy")</div>
+                                        <a asp-action="CourseDetail" asp-route-id="@course.Id" class="btn btn-outline-success w-100">
+                                            <i class="fas fa-check-circle me-1"></i> Review
+                                        </a>
+                                    }
+                                    else if (enrollment.CompletionPercentage > 0)
+                                    {
+                                        <a asp-action="CourseDetail" asp-route-id="@course.Id" class="btn btn-primary w-100">
+                                            <i class="fas fa-play me-1"></i> Continue
+                                        </a>
+                                    }
+                                    else if (course.AccessRule == "OnPayment" && course.Price > 0)
+                                    {
+                                        <button class="btn btn-warning w-100" onclick="alert('Payment gateway integration pending')">
+                                            <i class="fas fa-shopping-cart me-1"></i> Buy ($@course.Price)
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <a asp-action="CourseDetail" asp-route-id="@course.Id" class="btn btn-success w-100">
+                                            <i class="fas fa-rocket me-1"></i> Start
+                                        </a>
                                     }
                                 </div>
                             </div>
-                            <div class="card-footer bg-white">
-                                @if (enrollment.Status == "Completed")
-                                {
-                                    <a asp-action="CourseDetail" asp-route-id="@course.Id" class="btn btn-success w-100">
-                                        <i class="fas fa-check-circle"></i> View Certificate
-                                    </a>
-                                }
-                                else if (enrollment.Status == "Yet to Start")
-                                {
-                                    <a asp-action="CourseDetail" asp-route-id="@course.Id" class="btn btn-primary w-100">
-                                        <i class="fas fa-play"></i> Start Learning
-                                    </a>
-                                }
-                                else
-                                {
-                                    <a asp-action="CourseDetail" asp-route-id="@course.Id" class="btn btn-warning w-100">
-                                        <i class="fas fa-redo"></i> Continue Learning
-                                    </a>
-                                }
-                            </div>
                         </div>
-                    </div>
-                }
-            </div>
-        }
+                    }
+                </div>
+            }
+        </div>
     </div>
 </div>
