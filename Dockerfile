@@ -13,4 +13,4 @@ WORKDIR /app
 
 COPY --from=build /app/publish .
 
-ENTRYPOINT ["dotnet", "ParthAgrotech.dll"]
+ENTRYPOINT ["dotnet", "Learnova.dll"]
