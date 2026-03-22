@@ -35,19 +35,59 @@
                 </div>
 
                 <!-- Stats -->
-                <div class="row mt-5 pt-4">
-                    <div class="col-4">
-                        <h3 class="fw-bold text-primary mb-0">10K+</h3>
-                        <small class="text-muted">Active Learners</small>
+                <div class="row mt-5 pt-4 g-4 text-center">
+
+                    <!-- Active Learners -->
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body py-4">
+                                <div class="rounded-circle bg-primary bg-opacity-10 d-inline-flex
+                            align-items-center justify-content-center mb-3"
+                                     style="width:70px; height:70px;">
+                                    <i class="fas fa-users fa-2x text-primary"></i>
+                                </div>
+                                <h2 class="fw-bold text-primary mb-1" id="learnerCount">
+                                    @(ViewBag.TotalLearners ?? 0)
+                                </h2>
+                                <p class="text-muted mb-0">Active Learners</p>
+                            </div>
+                        </div>
                     </div>
-                    <div class="col-4">
-                        <h3 class="fw-bold text-primary mb-0">500+</h3>
-                        <small class="text-muted">Expert Courses</small>
+
+                    <!-- Total Courses -->
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body py-4">
+                                <div class="rounded-circle bg-success bg-opacity-10 d-inline-flex
+                            align-items-center justify-content-center mb-3"
+                                     style="width:70px; height:70px;">
+                                    <i class="fas fa-book-open fa-2x text-success"></i>
+                                </div>
+                                <h2 class="fw-bold text-success mb-1" id="courseCount">
+                                    @(ViewBag.TotalCourses ?? 0)
+                                </h2>
+                                <p class="text-muted mb-0">Expert Courses</p>
+                            </div>
+                        </div>
                     </div>
-                    <div class="col-4">
-                        <h3 class="fw-bold text-primary mb-0">98%</h3>
-                        <small class="text-muted">Success Rate</small>
+
+                    <!-- Total Instructors -->
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body py-4">
+                                <div class="rounded-circle bg-warning bg-opacity-10 d-inline-flex
+                            align-items-center justify-content-center mb-3"
+                                     style="width:70px; height:70px;">
+                                    <i class="fas fa-chalkboard-teacher fa-2x text-warning"></i>
+                                </div>
+                                <h2 class="fw-bold text-warning mb-1" id="instructorCount">
+                                    @(ViewBag.TotalInstructors ?? 0)
+                                </h2>
+                                <p class="text-muted mb-0">Total Instructors</p>
+                            </div>
+                        </div>
                     </div>
+
                 </div>
             </div>
             <div class="col-lg-6 text-center slide-in-right">
@@ -143,190 +183,7 @@
     </div>
 </section>
 
-<!-- Course Categories Section -->
-<section class="categories-section py-5 bg-light">
-    <div class="container">
-        <div class="text-center mb-5">
-            <h2 class="fw-bold">Popular <span class="text-gradient">Categories</span></h2>
-            <p class="text-muted">Explore our diverse range of course categories</p>
-        </div>
 
-        <div class="row g-4">
-            <div class="col-6 col-md-3">
-                <div class="card category-card h-100 text-center border-0 shadow-sm">
-                    <div class="card-body">
-                        <i class="fas fa-code fa-3x text-primary mb-3"></i>
-                        <h6 class="fw-bold mb-0">Programming</h6>
-                        <small class="text-muted">120+ Courses</small>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="card category-card h-100 text-center border-0 shadow-sm">
-                    <div class="card-body">
-                        <i class="fas fa-paint-brush fa-3x text-success mb-3"></i>
-                        <h6 class="fw-bold mb-0">Design</h6>
-                        <small class="text-muted">85+ Courses</small>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="card category-card h-100 text-center border-0 shadow-sm">
-                    <div class="card-body">
-                        <i class="fas fa-chart-line fa-3x text-warning mb-3"></i>
-                        <h6 class="fw-bold mb-0">Business</h6>
-                        <small class="text-muted">95+ Courses</small>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="card category-card h-100 text-center border-0 shadow-sm">
-                    <div class="card-body">
-                        <i class="fas fa-bullhorn fa-3x text-danger mb-3"></i>
-                        <h6 class="fw-bold mb-0">Marketing</h6>
-                        <small class="text-muted">70+ Courses</small>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="card category-card h-100 text-center border-0 shadow-sm">
-                    <div class="card-body">
-                        <i class="fas fa-camera fa-3x text-info mb-3"></i>
-                        <h6 class="fw-bold mb-0">Photography</h6>
-                        <small class="text-muted">50+ Courses</small>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="card category-card h-100 text-center border-0 shadow-sm">
-                    <div class="card-body">
-                        <i class="fas fa-music fa-3x text-purple mb-3"></i>
-                        <h6 class="fw-bold mb-0">Music</h6>
-                        <small class="text-muted">40+ Courses</small>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="card category-card h-100 text-center border-0 shadow-sm">
-                    <div class="card-body">
-                        <i class="fas fa-language fa-3x text-secondary mb-3"></i>
-                        <h6 class="fw-bold mb-0">Languages</h6>
-                        <small class="text-muted">60+ Courses</small>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="card category-card h-100 text-center border-0 shadow-sm">
-                    <div class="card-body">
-                        <i class="fas fa-heartbeat fa-3x text-danger mb-3"></i>
-                        <h6 class="fw-bold mb-0">Health</h6>
-                        <small class="text-muted">45+ Courses</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="text-center mt-4">
-            <a asp-controller="Learner" asp-action="Courses" class="btn btn-primary btn-lg">
-                <i class="fas fa-th-large me-2"></i> View All Categories
-            </a>
-        </div>
-    </div>
-</section>
-
-<!-- Testimonials Section -->
-<section class="testimonials-section py-5">
-    <div class="container">
-        <div class="text-center mb-5">
-            <h2 class="fw-bold">What Our <span class="text-gradient">Learners Say</span></h2>
-            <p class="text-muted">Real stories from real learners</p>
-        </div>
-
-        <div class="row g-4">
-            <div class="col-md-4">
-                <div class="card h-100 border-0 shadow-sm testimonial-card">
-                    <div class="card-body p-4">
-                        <div class="mb-3">
-                            <i class="fas fa-star text-warning"></i>
-                            <i class="fas fa-star text-warning"></i>
-                            <i class="fas fa-star text-warning"></i>
-                            <i class="fas fa-star text-warning"></i>
-                            <i class="fas fa-star text-warning"></i>
-                        </div>
-                        <p class="text-muted mb-4">
-                            "Learnova transformed my career! The courses are well-structured
-                            and the instructors are amazing. I got my dream job after completing
-                            the web development track."
-                        </p>
-                        <div class="d-flex align-items-center">
-                            <div class="testimonial-avatar bg-primary text-white rounded-circle me-3">
-                                RS
-                            </div>
-                            <div>
-                                <h6 class="mb-0 fw-bold">Rahul Sharma</h6>
-                                <small class="text-muted">Web Developer</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card h-100 border-0 shadow-sm testimonial-card">
-                    <div class="card-body p-4">
-                        <div class="mb-3">
-                            <i class="fas fa-star text-warning"></i>
-                            <i class="fas fa-star text-warning"></i>
-                            <i class="fas fa-star text-warning"></i>
-                            <i class="fas fa-star text-warning"></i>
-                            <i class="fas fa-star text-warning"></i>
-                        </div>
-                        <p class="text-muted mb-4">
-                            "The quiz system and badges keep me motivated! I love earning
-                            points and competing with other learners. Learning has never
-                            been this fun."
-                        </p>
-                        <div class="d-flex align-items-center">
-                            <div class="testimonial-avatar bg-success text-white rounded-circle me-3">
-                                PK
-                            </div>
-                            <div>
-                                <h6 class="mb-0 fw-bold">Priya Kapoor</h6>
-                                <small class="text-muted">Data Analyst</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card h-100 border-0 shadow-sm testimonial-card">
-                    <div class="card-body p-4">
-                        <div class="mb-3">
-                            <i class="fas fa-star text-warning"></i>
-                            <i class="fas fa-star text-warning"></i>
-                            <i class="fas fa-star text-warning"></i>
-                            <i class="fas fa-star text-warning"></i>
-                            <i class="fas fa-star-half-alt text-warning"></i>
-                        </div>
-                        <p class="text-muted mb-4">
-                            "As an instructor, I find Learnova's platform incredibly easy to use.
-                            Creating courses, managing students, and tracking progress is seamless.
-                            Highly recommended!"
-                        </p>
-                        <div class="d-flex align-items-center">
-                            <div class="testimonial-avatar bg-warning text-white rounded-circle me-3">
-                                AM
-                            </div>
-                            <div>
-                                <h6 class="mb-0 fw-bold">Anil Mehta</h6>
-                                <small class="text-muted">Course Instructor</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
 
 <!-- Badges Section -->
 <section class="badges-section py-5 bg-light">
