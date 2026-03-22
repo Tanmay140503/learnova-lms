@@ -1,6 +1,8 @@
 ```markdown
 # 🎓 Learnova - eLearning Platform
 
+Live Host Link: https://learnova-live-2.onrender.com/
+
 A comprehensive eLearning platform built with **ASP.NET Core MVC 8.0** featuring course management, interactive learning, quizzes with gamification, and progress tracking.
 
 ![.NET](https://img.shields.io/badge/.NET-8.0-purple)
